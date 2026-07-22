@@ -1,5 +1,24 @@
 # Nexura Redirects
 
+<div align="center">
+  <a href="https://wordpress.org/plugins/nexura-redirects/">
+    <img src="https://img.shields.io/badge/WordPress.org-DOWNLOAD_FREE-0073aa?logo=wordpress&style=for-the-badge" alt="Download on WordPress.org">
+  </a>
+</div>
+
+<div align="center">
+  <img src="https://img.shields.io/badge/REQUIRES_WP-5.6+-0073aa?labelColor=555555&style=flat-square" alt="Requires WP 5.6+">
+  <img src="https://img.shields.io/badge/REQUIRES_PHP-7.4+-0073aa?labelColor=555555&style=flat-square" alt="Requires PHP 7.4+">
+  <img src="https://img.shields.io/badge/TESTED_UP_TO-7.0.2-73c713?labelColor=555555&style=flat-square" alt="Tested up to 7.0.2">
+  <img src="https://img.shields.io/badge/LICENSE-GPLV2-0073aa?labelColor=555555&style=flat-square" alt="License GPLv2">
+</div>
+<div align="center">
+  <a href="https://github.com/nexurasecurity/nexura-redirects/actions"><img src="https://img.shields.io/github/actions/workflow/status/nexurasecurity/nexura-redirects/ci.yml?label=CI&logo=github&style=flat-square" alt="CI Status"></a>
+  <a href="https://github.com/nexurasecurity/nexura-redirects/stargazers"><img src="https://img.shields.io/github/stars/nexurasecurity/nexura-redirects?style=flat-square&logo=github&color=eeeeee&labelColor=eeeeee" alt="GitHub Stars"></a>
+  <a href="https://github.com/nexurasecurity/nexura-redirects/network/members"><img src="https://img.shields.io/github/forks/nexurasecurity/nexura-redirects?style=flat-square&logo=github&color=eeeeee&labelColor=eeeeee" alt="GitHub Forks"></a>
+  <a href="https://github.com/nexurasecurity/nexura-redirects/issues"><img src="https://img.shields.io/github/issues/nexurasecurity/nexura-redirects?style=flat-square&color=73c713" alt="GitHub Issues"></a>
+</div>
+
 Database-safe Migration + Serialized Search & Replace + Auto Redirect + 404 Recovery in one ultra-fast, native WordPress plugin.
 
 ## Features
