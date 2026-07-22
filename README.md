@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/LICENSE-GPLV2-0073aa?labelColor=555555&style=flat-square" alt="License GPLv2">
 </div>
 <div align="center">
+  <a href="https://github.com/nexurasecurity/nexura-redirects/actions"><img src="https://img.shields.io/github/actions/workflow/status/nexurasecurity/nexura-redirects/ci.yml?label=CI&logo=github&style=flat-square" alt="CI Status"></a>
   <a href="https://github.com/nexurasecurity/nexura-redirects/stargazers"><img src="https://img.shields.io/github/stars/nexurasecurity/nexura-redirects?style=flat-square&logo=github&color=eeeeee&labelColor=eeeeee" alt="GitHub Stars"></a>
   <a href="https://github.com/nexurasecurity/nexura-redirects/network/members"><img src="https://img.shields.io/github/forks/nexurasecurity/nexura-redirects?style=flat-square&logo=github&color=eeeeee&labelColor=eeeeee" alt="GitHub Forks"></a>
   <a href="https://github.com/nexurasecurity/nexura-redirects/issues"><img src="https://img.shields.io/github/issues/nexurasecurity/nexura-redirects?style=flat-square&color=73c713" alt="GitHub Issues"></a>
