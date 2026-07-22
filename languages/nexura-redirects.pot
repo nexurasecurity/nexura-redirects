@@ -1,0 +1,647 @@
+# Copyright (C) 2026 Nexura Security
+# This file is distributed under the same license as the Nexura Redirects plugin.
+msgid ""
+msgstr ""
+"Project-Id-Version: Nexura Redirects 1.0.1\n"
+"Report-Msgid-Bugs-To: https://nexurasecurity.com/support\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-07-16T14:30:03+02:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: Custom PHP Script\n"
+"X-Domain: nexura-redirects\n"
+
+#: includes/admin/class-admin-menu.php
+msgid "Nexura Redirects & Migration"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/list-tables/class-groups-list-table.php
+#: includes/admin/list-tables/class-redirects-list-table.php
+msgid "Redirects"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Nexura Redirects Setup"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Setup Wizard"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/list-tables/class-groups-list-table.php
+msgid "Groups"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Site"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/list-tables/class-logs-list-table.php
+msgid "Log"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "404s"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Import"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Export"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Options"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Support"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "🛡️ Security"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Redirect added successfully."
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Search Redirects"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Add redirect"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/list-tables/class-logs-list-table.php
+msgid "Source URL"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "The relative URL you want to redirect from"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Regex"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Ignore Slash"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Ignore Case"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Query Parameters"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/tabs/class-options-tab.php
+msgid "Exact match in any order"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/tabs/class-options-tab.php
+msgid "Ignore all query parameters"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Pass all query parameters to target"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Match"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "URL only"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "URL and login status"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "URL and role/capability"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "URL and referrer"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "URL and user agent"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "URL and cookie"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "URL and IP"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "URL and server"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "URL and HTTP header"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "When matched"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Redirect to URL"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Redirect to random post"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Pass-through"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Error (404)"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Do nothing (ignore)"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Exclude from logs"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/list-tables/class-logs-list-table.php
+msgid "Target URL"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "The target URL you want to redirect, or auto-complete on post name or permalink."
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+#: includes/admin/list-tables/class-groups-list-table.php
+msgid "Group"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Toggle advanced options"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Monitor broken links (404s) on your site. Create a redirect directly from here."
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Search URLs"
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "View logs for successful redirects, including User Agent and IP address."
+msgstr ""
+
+#: includes/admin/class-admin-menu.php
+msgid "Search Logs"
+msgstr ""
+
+#: includes/admin/class-post-meta-box.php
+msgid "Nexura Redirects"
+msgstr ""
+
+#: includes/admin/class-post-meta-box.php
+msgid "Instantly redirect this post to a new URL, or redirect an old URL to this post."
+msgstr ""
+
+#: includes/admin/class-post-meta-box.php
+msgid "Old URL (Redirect from)"
+msgstr ""
+
+#: includes/admin/class-post-meta-box.php
+msgid "Target URL (Redirect to)"
+msgstr ""
+
+#: includes/admin/class-post-meta-box.php
+msgid "By default, we redirect to this post. You can change this in the main dashboard."
+msgstr ""
+
+#: includes/admin/class-post-meta-box.php
+msgid "Add Redirect"
+msgstr ""
+
+#: includes/admin/class-post-meta-box.php
+msgid "Redirects pointing to this post:"
+msgstr ""
+
+#: includes/admin/class-post-meta-box.php
+msgid "No redirects found for this post yet."
+msgstr ""
+
+#: includes/admin/class-recommended-plugins.php
+msgid "Secure your website from hackers, brute force attacks, and malicious bots. Nexura Security provides Enterprise-grade protection completely for free. No database bloat, no slowdowns."
+msgstr ""
+
+#: includes/admin/class-recommended-plugins.php
+msgid "Pre-Boot Web Application Firewall (WAF)"
+msgstr ""
+
+#: includes/admin/class-recommended-plugins.php
+msgid "Deep Malware & Backdoor Scanner"
+msgstr ""
+
+#: includes/admin/class-recommended-plugins.php
+msgid "Two-Factor Authentication (2FA)"
+msgstr ""
+
+#: includes/admin/class-recommended-plugins.php
+msgid "Zero Database Bloat & Lightning Fast"
+msgstr ""
+
+#: includes/admin/class-recommended-plugins.php
+msgid "Active"
+msgstr ""
+
+#: includes/admin/class-recommended-plugins.php
+msgid "Install Nexura Security for Free"
+msgstr ""
+
+#: includes/admin/class-recommended-plugins.php
+msgid "View Details"
+msgstr ""
+
+#: includes/admin/list-tables/class-404-list-table.php
+msgid "404 Error"
+msgstr ""
+
+#: includes/admin/list-tables/class-404-list-table.php
+msgid "404 Errors"
+msgstr ""
+
+#: includes/admin/list-tables/class-404-list-table.php
+msgid "URL"
+msgstr ""
+
+#: includes/admin/list-tables/class-404-list-table.php
+#: includes/admin/list-tables/class-redirects-list-table.php
+msgid "Hits"
+msgstr ""
+
+#: includes/admin/list-tables/class-404-list-table.php
+msgid "Last Seen"
+msgstr ""
+
+#: includes/admin/list-tables/class-404-list-table.php
+msgid "Last IP"
+msgstr ""
+
+#: includes/admin/list-tables/class-404-list-table.php
+#: includes/admin/list-tables/class-logs-list-table.php
+msgid "User Agent"
+msgstr ""
+
+#: includes/admin/list-tables/class-404-list-table.php
+msgid "Referrer"
+msgstr ""
+
+#: includes/admin/list-tables/class-groups-list-table.php
+#: includes/admin/tabs/class-groups-tab.php
+msgid "Name"
+msgstr ""
+
+#: includes/admin/list-tables/class-groups-list-table.php
+msgid "Module"
+msgstr ""
+
+#: includes/admin/list-tables/class-groups-list-table.php
+msgid "Delete"
+msgstr ""
+
+#: includes/admin/list-tables/class-logs-list-table.php
+#: includes/admin/tabs/class-options-tab.php
+msgid "Logs"
+msgstr ""
+
+#: includes/admin/list-tables/class-logs-list-table.php
+msgid "Date"
+msgstr ""
+
+#: includes/admin/list-tables/class-logs-list-table.php
+msgid "IP Address"
+msgstr ""
+
+#: includes/admin/list-tables/class-redirects-list-table.php
+msgid "Redirect"
+msgstr ""
+
+#: includes/admin/list-tables/class-redirects-list-table.php
+msgid "Old URL"
+msgstr ""
+
+#: includes/admin/list-tables/class-redirects-list-table.php
+msgid "New URL"
+msgstr ""
+
+#: includes/admin/list-tables/class-redirects-list-table.php
+msgid "Code"
+msgstr ""
+
+#: includes/admin/list-tables/class-redirects-list-table.php
+msgid "Last Accessed"
+msgstr ""
+
+#: includes/admin/tabs/class-groups-tab.php
+msgid "Group added successfully."
+msgstr ""
+
+#: includes/admin/tabs/class-groups-tab.php
+msgid "Search Groups"
+msgstr ""
+
+#: includes/admin/tabs/class-groups-tab.php
+msgid "Add Group"
+msgstr ""
+
+#: includes/admin/tabs/class-groups-tab.php
+msgid "Use groups to organise your redirects. Groups are assigned to a module, which affects how the redirects in that group work. If you are unsure then stick to the WordPress module."
+msgstr ""
+
+#: includes/admin/tabs/class-groups-tab.php
+msgid "Add"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Here you can import redirects from CSV, JSON, or Apache .htaccess files. If you are importing from another plugin, their export file may also work."
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Upload File"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Import to group:"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Upload"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Copy & Paste"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Paste your CSV or .htaccess rules below:"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Import Text"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Export your redirects and logs. You can export everything, or just a specific group."
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Export to:"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Group:"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Export Redirects"
+msgstr ""
+
+#: includes/admin/tabs/class-import-export-tab.php
+msgid "Export 404 Logs"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Options saved successfully."
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Redirect Logs"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "No logs"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "A day"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "A week"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "A month"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Forever"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "404 Logs"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "IP Logging"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Full IP logging"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Anonymized IP (GDPR)"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "No IP logging"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "URL Settings"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "URL Monitor"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Monitor changes to posts and pages (auto-redirect when permalink changes)"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Default URL Settings"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Case-insensitive match (e.g. /Post will match /post)"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Ignore trailing slashes (e.g. /post/ will match /post)"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Default Query Matching"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Pass query parameters to target"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Advanced & Server"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Apache .htaccess"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Update Options"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Delete Redirection"
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Selecting this option will delete all redirections, all logs, and any options associated with the plugin. Make sure this is what you want to do."
+msgstr ""
+
+#: includes/admin/tabs/class-options-tab.php
+msgid "Delete plugin data"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Site settings saved successfully."
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Options on this page can cause problems if used incorrectly. You can temporarily disable them to make changes if needed."
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Relocate Site"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Want to redirect the entire site? Enter a domain to redirect everything, except WordPress login and admin. Enabling this option will disable any site aliases or canonical settings."
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Relocate to domain:"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Site Aliases"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "A site alias is another domain that you want to be redirected to this site. For example, an old domain, or a subdomain. This will redirect all URLs, including WordPress login and admin."
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Aliased Domain"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Action"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "No aliases defined."
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Remove"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Add Alias"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Canonical Settings"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Force a redirect from HTTP to HTTPS"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Preferred domain:"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Don't set a preferred domain"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Remove www from domain"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Add www to domain"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "HTTP Headers"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Site headers are added across your site, including redirects. (Coming soon)"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Location"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Header"
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "No headers defined."
+msgstr ""
+
+#: includes/admin/tabs/class-site-tab.php
+msgid "Update Settings"
+msgstr ""
+
+#: nexura-redirects.php
+msgid "Settings"
+msgstr ""
+
+#: nexura-redirects.php
+msgid "Get Nexura Security"
+msgstr ""
+

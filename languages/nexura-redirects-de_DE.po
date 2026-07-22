@@ -1,0 +1,35 @@
+# Nexura Redirects - German Translation
+# Copyright (C) 2026 Nexura Security
+msgid ""
+msgstr ""
+"Project-Id-Version: Nexura Redirects 1.1.0\n"
+"Report-Msgid-Bugs-To: https://nexurasecurity.com/\n"
+"PO-Revision-Date: 2026-07-22 00:00+0000\n"
+"Last-Translator: Prokash Sarker\n"
+"Language-Team: German\n"
+"Language: de_DE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Nexura Redirects"
+msgstr "Nexura Umleitungen"
+
+msgid "Redirects"
+msgstr "Umleitungen"
+
+msgid "Setup Wizard"
+msgstr "Einrichtungsassistent"
+
+msgid "404s"
+msgstr "404 Fehler"
+
+msgid "Import"
+msgstr "Importieren"
+
+msgid "Export"
+msgstr "Exportieren"
+
+msgid "Options"
+msgstr "Optionen"

@@ -1,0 +1,35 @@
+# Nexura Redirects - Portuguese (Brazil) Translation
+# Copyright (C) 2026 Nexura Security
+msgid ""
+msgstr ""
+"Project-Id-Version: Nexura Redirects 1.1.0\n"
+"Report-Msgid-Bugs-To: https://nexurasecurity.com/\n"
+"PO-Revision-Date: 2026-07-22 00:00+0000\n"
+"Last-Translator: Prokash Sarker\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "Nexura Redirects"
+msgstr "Redirecionamentos Nexura"
+
+msgid "Redirects"
+msgstr "Redirecionamentos"
+
+msgid "Setup Wizard"
+msgstr "Assistente de Configuração"
+
+msgid "404s"
+msgstr "Erros 404"
+
+msgid "Import"
+msgstr "Importar"
+
+msgid "Export"
+msgstr "Exportar"
+
+msgid "Options"
+msgstr "Opções"
