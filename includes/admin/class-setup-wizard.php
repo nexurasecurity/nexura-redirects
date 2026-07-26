@@ -20,10 +20,11 @@ class Nexura_Redirects_Setup_Wizard {
 			return;
 		}
 
-		$step = isset( $_GET['step'] ) ? intval( $_GET['step'] ) : 1;
+		$step = isset( $_GET['step'] ) ? intval( wp_unslash( $_GET['step'] ) ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		// Handle form submission for Step 1
-		if ( $step === 1 && isset( $_POST['nexura_setup_step_1'] ) && isset( $_POST['nexura_setup_nonce'] ) && wp_verify_nonce( $_POST['nexura_setup_nonce'], 'nexura_setup_action' ) ) {
+		$nonce = isset( $_POST['nexura_setup_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nexura_setup_nonce'] ) ) : '';
+		if ( $step === 1 && isset( $_POST['nexura_setup_step_1'] ) && wp_verify_nonce( $nonce, 'nexura_setup_action' ) ) {
 			
 			$enable_404 = isset( $_POST['enable_404_logging'] ) ? 1 : 0;
 			$enable_auto = isset( $_POST['enable_auto_redirect'] ) ? 1 : 0;
@@ -85,7 +86,7 @@ class Nexura_Redirects_Setup_Wizard {
 	 * Render the Setup Wizard UI.
 	 */
 	public static function render() {
-		$step = isset( $_GET['step'] ) ? intval( $_GET['step'] ) : 1;
+		$step = isset( $_GET['step'] ) ? intval( wp_unslash( $_GET['step'] ) ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		
 		?>

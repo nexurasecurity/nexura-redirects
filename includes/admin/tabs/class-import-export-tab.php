@@ -35,7 +35,7 @@ class Nexura_Redirects_Import_Export_Tab {
 							</select>
 						</p>
 						<p class="submit">
-							<button type="button" class="button button-primary"><?php esc_html_e( 'Upload', 'nexura-redirects' ); ?></button>
+							<button type="submit" name="nexura_import_file_submit" class="button button-primary"><?php esc_html_e( 'Upload', 'nexura-redirects' ); ?></button>
 						</p>
 					</form>
 				</div>
@@ -56,7 +56,7 @@ class Nexura_Redirects_Import_Export_Tab {
 							</select>
 						</p>
 						<p class="submit">
-							<button type="button" class="button"><?php esc_html_e( 'Import Text', 'nexura-redirects' ); ?></button>
+							<button type="submit" name="nexura_import_text_submit" class="button"><?php esc_html_e( 'Import Text', 'nexura-redirects' ); ?></button>
 						</p>
 					</form>
 				</div>
@@ -74,6 +74,7 @@ class Nexura_Redirects_Import_Export_Tab {
 			<h3><?php esc_html_e( 'Export', 'nexura-redirects' ); ?></h3>
 			<p class="description"><?php esc_html_e( 'Export your redirects and logs. You can export everything, or just a specific group.', 'nexura-redirects' ); ?></p>
 			
+			<form method="post" action="">
 			<table class="nexura-options-table" style="margin-top: 30px;">
 				<tr>
 					<th><label for="export_module"><?php esc_html_e( 'Export to:', 'nexura-redirects' ); ?></label></th>
@@ -98,8 +99,9 @@ class Nexura_Redirects_Import_Export_Tab {
 			</table>
 
 			<p class="submit" style="margin-top: 20px;">
-				<button type="button" class="button button-primary"><?php esc_html_e( 'Export Redirects', 'nexura-redirects' ); ?></button>
-				<button type="button" class="button"><?php esc_html_e( 'Export 404 Logs', 'nexura-redirects' ); ?></button>
+				<button type="submit" name="nexura_export_redirects" class="button button-primary"><?php esc_html_e( 'Export Redirects', 'nexura-redirects' ); ?></button>
+				<button type="submit" name="nexura_export_logs" class="button"><?php esc_html_e( 'Export 404 Logs', 'nexura-redirects' ); ?></button>
+			</p>
 			</form>
 		</div>
 		<?php

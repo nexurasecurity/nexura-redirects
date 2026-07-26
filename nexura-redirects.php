@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       Nexura Redirects
+ * Plugin Name:       Nexura Redirects – 301 Redirects, 404 Monitor & DB Migration
  * Plugin URI:        https://wordpress.org/plugins/nexura-redirects/
  * Description:       Database-safe Migration + Serialized Search & Replace + Auto Redirect + 404 Recovery in one ultra-fast, native WordPress plugin.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Author:            Nexura Security
  * Author URI:        https://profiles.wordpress.org/nexurasecurity/
  * License:           GPLv2 or later
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define Plugin Constants
-define( 'NEXURA_REDIRECTS_VERSION', '1.1.0' );
+define( 'NEXURA_REDIRECTS_VERSION', '1.1.1' );
 define( 'NEXURA_REDIRECTS_FILE', __FILE__ );
 define( 'NEXURA_REDIRECTS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'NEXURA_REDIRECTS_URL', plugin_dir_url( __FILE__ ) );

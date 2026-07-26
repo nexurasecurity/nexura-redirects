@@ -164,6 +164,28 @@ jQuery(document).ready(function($) {
 		$('#redirect-row-' + id).show();
 	});
 
+	$(document).on('click', '.nexura-inline-edit-group', function(e) {
+		e.preventDefault();
+		var id = $(this).data('id');
+		
+		// Hide all other open group inline edits
+		$('.inline-edit-row-group').hide();
+		$('tr[id^="group-row-"]').show();
+		
+		// Hide current row, show inline edit row
+		$('#group-row-' + id).hide();
+		$('#edit-group-' + id).show();
+	});
+
+	$(document).on('click', '.cancel-inline-edit-group', function(e) {
+		e.preventDefault();
+		var id = $(this).data('id');
+		
+		// Hide inline edit row, show current row
+		$('#edit-group-' + id).hide();
+		$('#group-row-' + id).show();
+	});
+
 });
 
 // ==========================================

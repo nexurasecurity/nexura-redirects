@@ -24,6 +24,12 @@ class Nexura_Redirects_Logger {
 	 * @param int $redirect_id The ID of the redirect.
 	 */
 	public static function log_redirect( $redirect_id ) {
+		// Check retention setting
+		$retention = get_option( 'nexura_redirect_log_retention', 'week' );
+		if ( $retention === 'none' ) {
+			return;
+		}
+
 		global $wpdb;
 		$table_logs = $wpdb->prefix . 'nexura_redirect_logs';
 
@@ -48,6 +54,12 @@ class Nexura_Redirects_Logger {
 	 * Track 404 errors on the site.
 	 */
 	public function track_404_errors() {
+		// Check retention setting
+		$retention = get_option( 'nexura_404_log_retention', 'week' );
+		if ( $retention === 'none' ) {
+			return;
+		}
+
 		// Only track if it's a 404 and not in admin.
 		if ( ! is_404() || is_admin() ) {
 			return;
@@ -90,6 +102,11 @@ class Nexura_Redirects_Logger {
 	 * @return string The IP address.
 	 */
 	private static function get_visitor_ip() {
+		$ip_logging = get_option( 'nexura_ip_logging', 'full' );
+		if ( $ip_logging === 'none' ) {
+			return '';
+		}
+
 		$ip = '127.0.0.1'; // Default
 
 		if ( ! empty( sanitize_text_field( wp_unslash( $_SERVER['HTTP_CLIENT_IP'] ?? '' ) ) ) ) {
@@ -102,8 +119,13 @@ class Nexura_Redirects_Logger {
 			$ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) );
 		}
 
-		// Use WordPress native IP anonymization for GDPR compliance (WP 4.9.6+).
 		$ip = sanitize_text_field( wp_unslash( $ip ) );
-		return function_exists( 'wp_privacy_anonymize_ip' ) ? wp_privacy_anonymize_ip( $ip ) : $ip;
+
+		// Use WordPress native IP anonymization for GDPR compliance (WP 4.9.6+).
+		if ( $ip_logging === 'anonymized' && function_exists( 'wp_privacy_anonymize_ip' ) ) {
+			return wp_privacy_anonymize_ip( $ip );
+		}
+
+		return $ip;
 	}
 }

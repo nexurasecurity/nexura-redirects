@@ -63,6 +63,8 @@ class Nexura_Redirects_Groups_List_Table extends WP_List_Table {
 	protected function column_name( $item ) {
 		$actions = array();
 		
+		$actions['edit'] = sprintf( '<a href="#" class="nexura-inline-edit-group" data-id="%d">%s</a>', absint( $item['id'] ), __( 'Edit', 'nexura-redirects' ) );
+		
 		if ( $item['id'] != 1 ) {
 			$delete_nonce = wp_create_nonce( 'nexura_delete_group' );
 			$actions['delete'] = sprintf(
@@ -79,6 +81,63 @@ class Nexura_Redirects_Groups_List_Table extends WP_List_Table {
 			'<strong>' . esc_html( $item['name'] ) . '</strong>',
 			$this->row_actions( $actions )
 		);
+	}
+
+	public function single_row( $item ) {
+		echo '<tr id="group-row-' . absint( $item['id'] ) . '">';
+		$this->single_row_columns( $item );
+		echo '</tr>';
+		$this->inline_edit_row( $item );
+	}
+
+	private function inline_edit_row( $item ) {
+		echo '<tr id="edit-group-' . absint( $item['id'] ) . '" class="inline-edit-row inline-edit-row-group" style="display: none;">';
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo '<td colspan="' . (int) $this->get_column_count() . '" class="colspanchange">';
+		
+		echo '<div class="inline-edit-wrapper" style="padding: 15px; background: #fff; border: 1px solid #c3c4c7; box-shadow: 0 1px 2px rgba(0,0,0,.05);">';
+		echo '<fieldset class="inline-edit-col-left" style="margin: 0; padding: 0;">';
+		
+		echo '<table class="form-table" style="margin: 0;">';
+		echo '<tbody>';
+		
+		// Group Name
+		echo '<tr>';
+		echo '<th scope="row" style="width: 150px; font-weight: 600; padding: 10px 0;"><label>Name</label></th>';
+		echo '<td style="padding: 10px 0;">';
+		echo '<input type="text" name="edit_group_name[' . absint( $item['id'] ) . ']" value="' . esc_attr( $item['name'] ) . '" class="regular-text" style="width: 100%; max-width: none;" required>';
+		echo '</td>';
+		echo '</tr>';
+
+		// Module
+		echo '<tr>';
+		echo '<th scope="row" style="width: 150px; font-weight: 600; padding: 10px 0;"><label>Module</label></th>';
+		echo '<td style="padding: 10px 0;">';
+		echo '<select name="edit_group_module[' . absint( $item['id'] ) . ']" style="width: 100%; max-width: none;">';
+		$modules = array( 'wordpress' => 'WordPress', 'apache' => 'Apache', 'nginx' => 'Nginx' );
+		foreach ( $modules as $val => $label ) {
+			echo '<option value="' . esc_attr( $val ) . '" ';
+			selected( $item['module'], $val, true );
+			echo '>' . esc_html( $label ) . '</option>';
+		}
+		echo '</select>';
+		echo '</td>';
+		echo '</tr>';
+
+		echo '</tbody>';
+		echo '</table>';
+		
+		echo '<p class="submit inline-edit-save" style="margin-bottom: 0; padding-bottom: 0;">';
+		echo '<button type="button" class="button cancel-inline-edit-group" data-id="' . absint( $item['id'] ) . '">Cancel</button> ';
+		echo '<button type="submit" name="nexura_edit_group" value="' . absint( $item['id'] ) . '" class="button button-primary">Save</button>';
+		wp_nonce_field( 'nexura_edit_group_action', 'nexura_edit_group_nonce', true, true );
+		echo '</p>';
+		
+		echo '</fieldset>';
+		echo '</div>';
+		
+		echo '</td>';
+		echo '</tr>';
 	}
 
 	protected function column_module( $item ) {
@@ -128,6 +187,7 @@ class Nexura_Redirects_Groups_List_Table extends WP_List_Table {
 		$query .= " ORDER BY {$orderby} {$order}";
 
 		if ( ! empty( $args ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			$prepared_query = $wpdb->prepare( $query, $args );
 		} else {
 			$prepared_query = $query;
