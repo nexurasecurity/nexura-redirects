@@ -36,6 +36,11 @@ class Nexura_Redirects_Auto {
 			return;
 		}
 
+		// Check if url monitor is enabled.
+		if ( ! get_option( 'nexura_url_monitor', 1 ) ) {
+			return;
+		}
+
 		$old_url = wp_make_link_relative( get_permalink( $post_before ) );
 		$new_url = wp_make_link_relative( get_permalink( $post_after ) );
 

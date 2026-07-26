@@ -26,4 +26,11 @@ $wpdb->query( "DROP TABLE IF EXISTS {$nexura_table_logs}" );
 /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared */
 $wpdb->query( "DROP TABLE IF EXISTS {$nexura_table_404s}" );
 
-// Note: Future feature options should be deleted here using delete_option() if added later.
+// Drop Groups table
+$nexura_table_groups = $wpdb->prefix . 'nexura_redirect_groups';
+/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared */
+$wpdb->query( "DROP TABLE IF EXISTS {$nexura_table_groups}" );
+
+// Delete plugin options
+/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared */
+$wpdb->query( "DELETE FROM {$wpdb->prefix}options WHERE option_name LIKE 'nexura\_%'" );

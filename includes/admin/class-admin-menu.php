@@ -17,6 +17,53 @@ class Nexura_Redirects_Admin_Menu {
 		add_action( 'admin_menu', array( $this, 'register_menus' ) );
 		add_action( 'admin_init', array( $this, 'setup_wizard_redirect' ), 1 );
 		add_action( 'admin_init', array( $this, 'process_setup_wizard_actions' ) );
+		add_action( 'admin_init', array( $this, 'process_import_export_actions' ) );
+	}
+
+	/**
+	 * Process Import/Export actions before headers are sent.
+	 */
+	public function process_import_export_actions() {
+		// Verify we're on the right page
+		if ( ! isset( $_GET['page'] ) || sanitize_text_field( wp_unslash( $_GET['page'] ) ) !== 'nexura-redirects' ) {
+			return;
+		}
+
+		if ( ! isset( $_GET['tab'] ) || ( sanitize_text_field( wp_unslash( $_GET['tab'] ) ) !== 'import' && sanitize_text_field( wp_unslash( $_GET['tab'] ) ) !== 'export' ) ) {
+			return;
+		}
+
+		require_once NEXURA_REDIRECTS_DIR . 'includes/class-import-export.php';
+
+		// Handle Exports
+		if ( isset( $_POST['nexura_export_redirects'] ) ) {
+			$format = isset( $_POST['export_module'] ) ? sanitize_text_field( wp_unslash( $_POST['export_module'] ) ) : 'csv';
+			if ( $format === 'json' ) {
+				Nexura_Redirects_Import_Export::export_json();
+			} else {
+				Nexura_Redirects_Import_Export::export_csv();
+			}
+		}
+
+		// Handle Imports
+		if ( isset( $_POST['nexura_import_text_submit'] ) && check_admin_referer( 'nexura_import_text', 'nexura_import_nonce' ) ) {
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Raw JSON input expected.
+			$text = isset( $_POST['nexura_import_text'] ) ? wp_unslash( $_POST['nexura_import_text'] ) : '';
+			if ( ! empty( $text ) ) {
+				$count = Nexura_Redirects_Import_Export::import_json( $text );
+				/* translators: %d: number of redirects */
+				add_settings_error( 'nexura_redirects', 'import_success', sprintf( __( '%d redirects imported successfully.', 'nexura-redirects' ), $count ), 'success' );
+			}
+		}
+		
+		if ( isset( $_POST['nexura_import_file_submit'] ) && check_admin_referer( 'nexura_import_file', 'nexura_import_nonce' ) ) {
+			if ( ! empty( $_FILES['nexura_import_file']['tmp_name'] ) ) {
+				$file_content = file_get_contents( sanitize_text_field( wp_unslash( $_FILES['nexura_import_file']['tmp_name'] ) ) );
+				$count = Nexura_Redirects_Import_Export::import_json( $file_content );
+				/* translators: %d: number of redirects */
+				add_settings_error( 'nexura_redirects', 'import_success', sprintf( __( '%d redirects imported successfully.', 'nexura-redirects' ), $count ), 'success' );
+			}
+		}
 	}
 
 	/**
@@ -199,17 +246,23 @@ class Nexura_Redirects_Admin_Menu {
 		if ( isset( $_POST['nexura_add_redirect'] ) && check_admin_referer( 'nexura_add_redirect_action', 'nexura_add_redirect_nonce' ) ) {
 			$source_url  = isset( $_POST['source_url'] ) ? sanitize_text_field( wp_unslash( $_POST['source_url'] ) ) : '';
 			$target_url  = isset( $_POST['target_url'] ) ? sanitize_text_field( wp_unslash( $_POST['target_url'] ) ) : '';
+			$is_regex    = ! empty( $_POST['url_regex'] );
 
-			// Ensure source URL is a relative path starting with /
-			$source_url = wp_make_link_relative( $source_url );
-			if ( ! empty( $source_url ) && strpos( $source_url, '/' ) !== 0 ) {
-				$source_url = '/' . $source_url;
+			// Ensure source URL is a relative path starting with / (skip if regex)
+			if ( ! $is_regex ) {
+				$source_url = wp_make_link_relative( $source_url );
+				if ( ! empty( $source_url ) && strpos( $source_url, '/' ) !== 0 ) {
+					$source_url = '/' . $source_url;
+				}
 			}
 			
 			// Target URL can be external, but we make it relative if it's internal
 			$target_url = wp_make_link_relative( $target_url );
 			$group_id    = isset( $_POST['group_id'] ) ? absint( $_POST['group_id'] ) : 1;
 			$match_type  = isset( $_POST['match_type'] ) ? sanitize_text_field( wp_unslash( $_POST['match_type'] ) ) : 'url';
+			if ( $is_regex && strpos( $match_type, 'regex' ) === false ) {
+				$match_type .= '_regex';
+			}
 			$status_code = isset( $_POST['status_code'] ) ? absint( $_POST['status_code'] ) : 301;
 
 			if ( ! empty( $source_url ) && ! empty( $target_url ) ) {
@@ -235,16 +288,24 @@ class Nexura_Redirects_Admin_Menu {
 			
 			$source_url  = isset( $_POST['edit_source_url'][$id] ) ? sanitize_text_field( wp_unslash( $_POST['edit_source_url'][$id] ) ) : '';
 			$target_url  = isset( $_POST['edit_target_url'][$id] ) ? sanitize_text_field( wp_unslash( $_POST['edit_target_url'][$id] ) ) : '';
+			$is_regex    = ! empty( $_POST['edit_url_regex'][$id] );
 
-			// Ensure source URL is a relative path starting with /
-			$source_url = wp_make_link_relative( $source_url );
-			if ( ! empty( $source_url ) && strpos( $source_url, '/' ) !== 0 ) {
-				$source_url = '/' . $source_url;
+			// Ensure source URL is a relative path starting with / (skip if regex)
+			if ( ! $is_regex ) {
+				$source_url = wp_make_link_relative( $source_url );
+				if ( ! empty( $source_url ) && strpos( $source_url, '/' ) !== 0 ) {
+					$source_url = '/' . $source_url;
+				}
 			}
 			
 			$target_url = wp_make_link_relative( $target_url );
 			$group_id    = isset( $_POST['edit_group_id'][$id] ) ? absint( $_POST['edit_group_id'][$id] ) : 1;
 			$match_type  = isset( $_POST['edit_match_type'][$id] ) ? sanitize_text_field( wp_unslash( $_POST['edit_match_type'][$id] ) ) : 'url';
+			if ( $is_regex && strpos( $match_type, 'regex' ) === false ) {
+				$match_type .= '_regex';
+			} elseif ( ! $is_regex ) {
+				$match_type = str_replace( '_regex', '', $match_type );
+			}
 			$status_code = isset( $_POST['edit_status_code'][$id] ) ? absint( $_POST['edit_status_code'][$id] ) : 301;
 
 			if ( ! empty( $source_url ) && ! empty( $target_url ) ) {
@@ -294,16 +355,13 @@ class Nexura_Redirects_Admin_Menu {
 						<tr>
 							<th scope="row" style="width: 150px; font-weight: 600;"><label for="source_url"><?php esc_html_e( 'Source URL', 'nexura-redirects' ); ?></label></th>
 							<td>
-								<div style="display:flex; position: relative;">
-									<input type="text" name="source_url" id="source_url" class="regular-text" style="flex:1; width:100%;" placeholder="<?php esc_attr_e( 'The relative URL you want to redirect from', 'nexura-redirects' ); ?>" required>
-									<button type="button" class="button" id="nexura-source-options-toggle" style="margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0;"><span class="dashicons dashicons-arrow-down-alt2" style="margin-top: 4px;"></span></button>
-									
-									<!-- Source URL Options Dropdown -->
-									<div id="nexura-source-options" style="display:none; position:absolute; right:0; top: 100%; background: #fff; border: 1px solid #8c8f94; box-shadow: 0 3px 5px rgba(0,0,0,.1); padding: 10px; z-index: 100; min-width: 150px; margin-top: -1px;">
-										<label style="display:block; margin-bottom: 8px;"><input type="checkbox" name="url_regex" value="1"> <?php esc_html_e( 'Regex', 'nexura-redirects' ); ?></label>
-										<label style="display:block; margin-bottom: 8px;"><input type="checkbox" name="url_ignore_slash" value="1"> <?php esc_html_e( 'Ignore Slash', 'nexura-redirects' ); ?></label>
-										<label style="display:block;"><input type="checkbox" name="url_ignore_case" value="1"> <?php esc_html_e( 'Ignore Case', 'nexura-redirects' ); ?></label>
-									</div>
+								<div style="margin-bottom: 8px;">
+									<input type="text" name="source_url" id="source_url" class="regular-text" style="width:100%;" placeholder="<?php esc_attr_e( 'The relative URL you want to redirect from', 'nexura-redirects' ); ?>" required>
+								</div>
+								<div style="display: flex; gap: 15px; flex-wrap: wrap;">
+									<label style="font-weight: 600;"><input type="checkbox" name="url_regex" value="1"> <?php esc_html_e( 'Regular Expression (Regex)', 'nexura-redirects' ); ?></label>
+									<label style="font-weight: 600;"><input type="checkbox" name="url_ignore_slash" value="1"> <?php esc_html_e( 'Ignore Slash', 'nexura-redirects' ); ?></label>
+									<label style="font-weight: 600;"><input type="checkbox" name="url_ignore_case" value="1"> <?php esc_html_e( 'Ignore Case', 'nexura-redirects' ); ?></label>
 								</div>
 							</td>
 						</tr>

@@ -86,10 +86,12 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 
 	private function inline_edit_row( $item ) {
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$groups = $wpdb->get_results( "SELECT id, name FROM {$wpdb->prefix}nexura_redirect_groups ORDER BY name ASC" );
 		
 		echo '<tr id="edit-redirect-' . absint( $item['id'] ) . '" class="inline-edit-row inline-edit-row-redirect" style="display: none;">';
-		echo '<td colspan="' . $this->get_column_count() . '" class="colspanchange">';
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo '<td colspan="' . (int) $this->get_column_count() . '" class="colspanchange">';
 		
 		echo '<div class="inline-edit-wrapper" style="padding: 15px; background: #fff; border: 1px solid #c3c4c7; box-shadow: 0 1px 2px rgba(0,0,0,.05);">';
 		echo '<fieldset class="inline-edit-col-left" style="margin: 0; padding: 0;">';
@@ -101,7 +103,16 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 		echo '<tr>';
 		echo '<th scope="row" style="width: 150px; font-weight: 600; padding: 10px 0;"><label>Source URL</label></th>';
 		echo '<td style="padding: 10px 0;">';
+		echo '<div style="margin-bottom: 8px;">';
 		echo '<input type="text" name="edit_source_url[' . absint( $item['id'] ) . ']" value="' . esc_attr( $item['old_url'] ) . '" class="regular-text" style="width: 100%; max-width: none;">';
+		echo '</div>';
+		$is_regex = ( strpos( $item['match_type'], 'regex' ) !== false );
+		echo '<div style="display: flex; gap: 15px; flex-wrap: wrap;">';
+		echo '<label style="font-weight: 600;"><input type="checkbox" name="edit_url_regex[' . absint( $item['id'] ) . ']" value="1" ' . checked( $is_regex, true, false ) . '> Regular Expression (Regex)</label>';
+		// The following are placeholders for now to match the Add form
+		echo '<label style="font-weight: 600;"><input type="checkbox" name="edit_url_ignore_slash[' . absint( $item['id'] ) . ']" value="1"> Ignore Slash</label>';
+		echo '<label style="font-weight: 600;"><input type="checkbox" name="edit_url_ignore_case[' . absint( $item['id'] ) . ']" value="1"> Ignore Case</label>';
+		echo '</div>';
 		echo '</td>';
 		echo '</tr>';
 
@@ -121,9 +132,11 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 			'url_and_server' => 'URL and server',
 			'url_and_header' => 'URL and HTTP header'
 		);
+		$current_match_type = str_replace( '_regex', '', $item['match_type'] );
 		foreach ( $match_types as $val => $label ) {
-			$selected = selected( $item['match_type'], $val, false );
-			echo '<option value="' . esc_attr( $val ) . '" ' . $selected . '>' . esc_html( $label ) . '</option>';
+			echo '<option value="' . esc_attr( $val ) . '" ';
+			selected( $current_match_type, $val, true );
+			echo '>' . esc_html( $label ) . '</option>';
 		}
 		echo '</select>';
 		echo '</td>';
@@ -143,8 +156,9 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 		echo '<td style="padding: 10px 0;">';
 		echo '<select name="edit_group_id[' . absint( $item['id'] ) . ']" style="width: 100%; max-width: none;">';
 		foreach ( $groups as $group ) {
-			$selected = selected( $item['group_id'], $group->id, false );
-			echo '<option value="' . esc_attr( $group->id ) . '" ' . $selected . '>' . esc_html( $group->name ) . '</option>';
+			echo '<option value="' . esc_attr( $group->id ) . '" ';
+			selected( $item['group_id'], $group->id, true );
+			echo '>' . esc_html( $group->name ) . '</option>';
 		}
 		echo '</select>';
 		echo '</td>';
@@ -157,8 +171,9 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 		echo '<select name="edit_status_code[' . absint( $item['id'] ) . ']" style="width: 100%; max-width: none;">';
 		$codes = array( 301 => '301 - Moved Permanently', 302 => '302 - Found', 303 => '303 - See Other', 304 => '304 - Not Modified', 307 => '307 - Temporary Redirect', 308 => '308 - Permanent Redirect' );
 		foreach ( $codes as $code => $label ) {
-			$selected = selected( $item['status_code'], $code, false );
-			echo '<option value="' . esc_attr( $code ) . '" ' . $selected . '>' . esc_html( $label ) . '</option>';
+			echo '<option value="' . esc_attr( $code ) . '" ';
+			selected( $item['status_code'], $code, true );
+			echo '>' . esc_html( $label ) . '</option>';
 		}
 		echo '</select>';
 		echo '</td>';
@@ -170,7 +185,7 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 		echo '<p class="submit inline-edit-save" style="margin-bottom: 0; padding-bottom: 0;">';
 		echo '<button type="button" class="button cancel-inline-edit" data-id="' . absint( $item['id'] ) . '">Cancel</button> ';
 		echo '<button type="submit" name="nexura_edit_redirect" value="' . absint( $item['id'] ) . '" class="button button-primary">Save</button>';
-		echo wp_nonce_field( 'nexura_edit_redirect_action', 'nexura_edit_redirect_nonce', true, false );
+		wp_nonce_field( 'nexura_edit_redirect_action', 'nexura_edit_redirect_nonce', true, true );
 		echo '</p>';
 		
 		echo '</fieldset>';
@@ -226,6 +241,7 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 		$query .= " ORDER BY $orderby $order";
 
 		if ( ! empty( $args ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			$prepared_query = $wpdb->prepare( $query, $args );
 		} else {
 			$prepared_query = $query;
@@ -281,8 +297,8 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 				$redirect_ids = array_map( 'absint', $redirect_ids );
 				if ( ! empty( $redirect_ids ) ) {
 					$placeholders = implode( ', ', array_fill( 0, count( $redirect_ids ), '%d' ) );
-					/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
-					$wpdb->query( $wpdb->prepare( "DELETE FROM $table_name WHERE id IN ($placeholders)", $redirect_ids ) );
+					/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare */
+					$wpdb->query( $wpdb->prepare( "DELETE FROM $table_name WHERE id IN ($placeholders)", ...$redirect_ids ) );
 				}
 			}
 		}

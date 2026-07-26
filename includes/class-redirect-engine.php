@@ -32,33 +32,128 @@ class Nexura_Redirects_Engine {
 		// Get requested URL (relative path).
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '/';
 		
+		// Strip home path from request uri for matching if WP is installed in a subdirectory.
+		$home_path = wp_parse_url( home_url(), PHP_URL_PATH );
+		$relative_uri = $request_uri;
+		if ( $home_path && $home_path !== '/' && strpos( $request_uri, $home_path ) === 0 ) {
+			$relative_uri = substr( $request_uri, strlen( $home_path ) );
+			if ( empty( $relative_uri ) || $relative_uri[0] !== '/' ) {
+				$relative_uri = '/' . ltrim( $relative_uri, '/' );
+			}
+		}
+
 		// Build full URL for matching (in case old redirects were saved with domain)
 		$host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
 		$protocol = is_ssl() ? 'https://' : 'http://';
 		$full_url = $host ? $protocol . $host . $request_uri : '';
 
+		// --- SITE SETTINGS LOGIC ---
+		$site_relocate = get_option( 'nexura_site_relocate', '' );
+		if ( ! empty( $site_relocate ) ) {
+			$relocate_to = rtrim( $site_relocate, '/' ) . $request_uri;
+			if ( $full_url !== $relocate_to ) {
+				// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
+				wp_redirect( esc_url_raw( $relocate_to ), 301 );
+				exit;
+			}
+		}
+
+		$force_https      = get_option( 'nexura_site_force_https', 0 );
+		$preferred_domain = get_option( 'nexura_site_preferred_domain', 'none' );
+		$aliases          = get_option( 'nexura_site_aliases', array() );
+
+		$new_protocol = $protocol;
+		$new_host     = $host;
+		$needs_canonical_redirect = false;
+
+		// Force HTTPS
+		if ( $force_https && $protocol === 'http://' ) {
+			$new_protocol = 'https://';
+			$needs_canonical_redirect = true;
+		}
+
+		// Aliases
+		$main_host = wp_parse_url( home_url(), PHP_URL_HOST );
+		if ( ! empty( $host ) && $host !== $main_host && in_array( $host, $aliases, true ) ) {
+			$new_host = $main_host;
+			$needs_canonical_redirect = true;
+		}
+
+		// Preferred Domain
+		if ( $preferred_domain === 'add_www' && strpos( $new_host, 'www.' ) !== 0 ) {
+			$new_host = 'www.' . $new_host;
+			$needs_canonical_redirect = true;
+		} elseif ( $preferred_domain === 'remove_www' && strpos( $new_host, 'www.' ) === 0 ) {
+			$new_host = substr( $new_host, 4 );
+			$needs_canonical_redirect = true;
+		}
+
+		if ( $needs_canonical_redirect && ! empty( $new_host ) ) {
+			$canonical_url = $new_protocol . $new_host . $request_uri;
+			if ( $full_url !== $canonical_url ) {
+				// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
+				wp_redirect( esc_url_raw( $canonical_url ), 301 );
+				exit;
+			}
+		}
+		// --- END SITE SETTINGS LOGIC ---
+
 		// Remove query strings for exact matching if needed (can be advanced later).
 		$parsed_uri = wp_parse_url( $request_uri );
 		$path_only  = isset( $parsed_uri['path'] ) ? $parsed_uri['path'] : '/';
+		
+		$parsed_relative = wp_parse_url( $relative_uri );
+		$relative_path_only = isset( $parsed_relative['path'] ) ? $parsed_relative['path'] : '/';
 		
 		$parsed_full = wp_parse_url( $full_url );
 		$full_path_only = isset( $parsed_full['scheme'], $parsed_full['host'] ) ? $parsed_full['scheme'] . '://' . $parsed_full['host'] . $path_only : '';
 
 		// 1. Try Exact Match First (Fastest)
 		/* phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared */
-		$query = $wpdb->prepare( "SELECT * FROM {$table_name} WHERE (old_url = %s OR old_url = %s) AND status_code > 0 LIMIT 1", $request_uri, $full_url );
+		$query = $wpdb->prepare( "SELECT * FROM {$table_name} WHERE (old_url = %s OR old_url = %s OR old_url = %s) AND status_code > 0 LIMIT 1", $request_uri, $relative_uri, $full_url );
 		/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
 		$redirect = $wpdb->get_row( $query );
 
 		// 2. If no exact match on full URI, try matching just the path
 		if ( ! $redirect && $request_uri !== $path_only ) {
 			/* phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared */
-			$query_path = $wpdb->prepare( "SELECT * FROM {$table_name} WHERE (old_url = %s OR old_url = %s) AND status_code > 0 LIMIT 1", $path_only, $full_path_only );
+			$query_path = $wpdb->prepare( "SELECT * FROM {$table_name} WHERE (old_url = %s OR old_url = %s OR old_url = %s) AND status_code > 0 LIMIT 1", $path_only, $relative_path_only, $full_path_only );
 			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
 			$redirect = $wpdb->get_row( $query_path );
 		}
 
-		// (Phase 2: Add Regex and Wildcard matching here later)
+		// 3. Regex Matching
+		if ( ! $redirect ) {
+			// Fetch all regex redirects
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared */
+			$regex_redirects = $wpdb->get_results( "SELECT * FROM {$table_name} WHERE match_type LIKE '%regex%' AND status_code > 0" );
+			
+			if ( $regex_redirects ) {
+				foreach ( $regex_redirects as $rule ) {
+					$pattern = $rule->old_url;
+					// Add delimiters if missing
+					if ( substr( $pattern, 0, 1 ) !== '@' && substr( $pattern, 0, 1 ) !== '/' && substr( $pattern, 0, 1 ) !== '#' ) {
+						$pattern = '@' . str_replace( '@', '\@', $pattern ) . '@i';
+					}
+					
+					$test_urls = array( $request_uri, $relative_uri, $path_only, $full_url );
+					
+					foreach ( $test_urls as $url ) {
+						// Suppress warnings in case of malformed user regex
+						if ( @preg_match( $pattern, $url, $matches ) ) {
+							$redirect = clone $rule;
+							// Process capture groups ($1, $2, etc.)
+							if ( strpos( $redirect->new_url, '$' ) !== false && count( $matches ) > 1 ) {
+								for ( $i = 1; $i < count( $matches ); $i++ ) {
+									$redirect->new_url = str_replace( '$' . $i, $matches[$i], $redirect->new_url );
+								}
+							}
+							break 2;
+						}
+					}
+				}
+			}
+		}
 
 		// Loop prevention check: if the redirect target is the same as the current URL.
 		if ( $redirect && wp_make_link_relative( $redirect->new_url ) === $request_uri ) {

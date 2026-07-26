@@ -29,6 +29,27 @@ class Nexura_Redirects_Groups_Tab {
 			}
 		}
 
+		// Handle Edit Group
+		if ( isset( $_POST['nexura_edit_group'] ) && check_admin_referer( 'nexura_edit_group_action', 'nexura_edit_group_nonce' ) ) {
+			$id = absint( $_POST['nexura_edit_group'] );
+			$name = isset( $_POST['edit_group_name'][$id] ) ? sanitize_text_field( wp_unslash( $_POST['edit_group_name'][$id] ) ) : '';
+			$module = isset( $_POST['edit_group_module'][$id] ) ? sanitize_text_field( wp_unslash( $_POST['edit_group_module'][$id] ) ) : 'wordpress';
+
+			if ( ! empty( $name ) ) {
+				global $wpdb;
+				$table = $wpdb->prefix . 'nexura_redirect_groups';
+				/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->update(
+					$table,
+					array(
+						'name'      => $name,
+						'module_id' => $module,
+					),
+					array( 'id' => $id )
+				);
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Group updated successfully.', 'nexura-redirects' ) . '</p></div>';
+			}
+		}
+
 		if ( ! class_exists( 'WP_List_Table' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
 		}

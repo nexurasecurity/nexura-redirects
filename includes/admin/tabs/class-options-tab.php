@@ -14,6 +14,30 @@ class Nexura_Redirects_Options_Tab {
 	 * Render the Options tab.
 	 */
 	public static function render() {
+		// Handle Data Deletion
+		if ( isset( $_POST['nexura_delete_data'] ) && check_admin_referer( 'nexura_delete_data_action', 'nexura_delete_data_nonce' ) ) {
+			global $wpdb;
+
+			// Truncate Custom Tables
+			$tables = array(
+				$wpdb->prefix . 'nexura_redirects',
+				$wpdb->prefix . 'nexura_redirect_groups',
+				$wpdb->prefix . 'nexura_redirect_logs',
+				$wpdb->prefix . 'nexura_404_logs',
+			);
+
+			foreach ( $tables as $table ) {
+				/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared */
+				$wpdb->query( "TRUNCATE TABLE {$table}" );
+			}
+			
+			// Delete all plugin options
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared */
+			$wpdb->query( "DELETE FROM {$wpdb->prefix}options WHERE option_name LIKE 'nexura\_%'" );
+
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'All Nexura Redirects data has been successfully deleted.', 'nexura-redirects' ) . '</p></div>';
+		}
+
 		// Save settings if form is submitted
 		if ( isset( $_POST['nexura_save_options'] ) && check_admin_referer( 'nexura_options_action', 'nexura_options_nonce' ) ) {
 			update_option( 'nexura_redirect_log_retention', sanitize_text_field( wp_unslash( sanitize_text_field( wp_unslash( $_POST['redirect_log_retention'] ?? '' ) ) ) ) );
@@ -136,12 +160,15 @@ class Nexura_Redirects_Options_Tab {
 				</p>
 			</form>
 
-			<div class="nexura-danger-zone">
-				<h3 style="color: #dc3232; border-bottom-color: #ff00002b;"><?php esc_html_e( 'Delete Redirection', 'nexura-redirects' ); ?></h3>
-				<p class="description"><?php esc_html_e( 'Selecting this option will delete all redirections, all logs, and any options associated with the plugin. Make sure this is what you want to do.', 'nexura-redirects' ); ?></p>
-				<button class="button" style="border-color: #dc3232; color: #dc3232;" onclick="if(!confirm('Are you sure you want to delete everything? This cannot be undone.')) return false;">
-					<?php esc_html_e( 'Delete plugin data', 'nexura-redirects' ); ?>
-				</button>
+			<div class="nexura-danger-zone" style="margin-top: 40px; padding: 20px 24px; background: #fff5f5; border: 1px solid #fcbcbc; border-left: 4px solid #dc3232; border-radius: 4px;">
+				<h3 style="color: #dc3232; margin: 0 0 8px 0; padding: 0; border: none; font-size: 15px;"><?php esc_html_e( 'Delete Redirection', 'nexura-redirects' ); ?></h3>
+				<p class="description" style="color: #6c6c6c; margin: 0 0 16px 0; font-size: 13px;"><?php esc_html_e( 'Selecting this option will delete all redirections, all logs, and any options associated with the plugin. Make sure this is what you want to do.', 'nexura-redirects' ); ?></p>
+				<form method="post" action="">
+					<?php wp_nonce_field( 'nexura_delete_data_action', 'nexura_delete_data_nonce' ); ?>
+					<button type="submit" name="nexura_delete_data" class="button" style="background: #dc3232; border-color: #b02828; color: #fff; font-weight: 600; padding: 4px 16px;" onclick="if(!confirm('<?php esc_attr_e( 'Are you sure you want to delete everything? This cannot be undone.', 'nexura-redirects' ); ?>')) return false;">
+						<?php esc_html_e( 'Delete plugin data', 'nexura-redirects' ); ?>
+					</button>
+				</form>
 			</div>
 		</div>
 		<?php
