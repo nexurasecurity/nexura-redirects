@@ -22,6 +22,14 @@ class Nexura_Redirects_Search_Replace {
 	public static function run( $search, $replace, $tables, $dry_run = true ) {
 		global $wpdb;
 		
+		if ( function_exists( 'wp_raise_memory_limit' ) ) {
+			wp_raise_memory_limit( 'admin' );
+		}
+		if ( function_exists( 'set_time_limit' ) ) {
+			// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
+			@set_time_limit( 300 );
+		}
+
 		$report = array(
 			'tables'       => 0,
 			'rows_checked' => 0,
@@ -29,11 +37,19 @@ class Nexura_Redirects_Search_Replace {
 			'dry_run'      => $dry_run,
 		);
 
-		if ( empty( $search ) || empty( $tables ) ) {
+		if ( empty( $search ) || empty( $tables ) || ! is_array( $tables ) ) {
 			return $report;
 		}
 
+		// Ensure tables are valid existing tables
+		$existing_tables = $wpdb->get_col( "SHOW TABLES" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
 		foreach ( $tables as $table ) {
+			$table = sanitize_text_field( $table );
+			if ( ! in_array( $table, $existing_tables, true ) ) {
+				continue;
+			}
+
 			// Skip our own logs tables to avoid polluting the migration.
 			if ( strpos( $table, 'nexura_redirect_logs' ) !== false || strpos( $table, 'nexura_404_logs' ) !== false ) {
 				continue;
@@ -44,7 +60,8 @@ class Nexura_Redirects_Search_Replace {
 			// Get primary key and columns
 			$primary_key = '';
 			$columns     = array();
-			$fields      = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_results( "DESCRIBE $table" );
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$fields      = $wpdb->get_results( "DESCRIBE {$table}" );
 			
 			foreach ( $fields as $field ) {
 				$columns[] = $field->Field;
@@ -57,40 +74,54 @@ class Nexura_Redirects_Search_Replace {
 				continue; // Cannot safely update without PK.
 			}
 
-			// Get data (Added LIMIT 5000 to prevent memory exhaustion, can be expanded to full pagination later)
-			$rows = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_results( "SELECT * FROM $table LIMIT 5000", ARRAY_A );
+			// Process table in memory-safe chunks of 500
+			$chunk_size = 500;
+			$offset     = 0;
 
-			foreach ( $rows as $row ) {
-				$report['rows_checked']++;
-				$update_needed = false;
-				$update_data   = array();
+			while ( true ) {
+				/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+				$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} LIMIT %d OFFSET %d", $chunk_size, $offset ), ARRAY_A );
 
-				foreach ( $columns as $column ) {
-					$current_val = $row[ $column ];
-					
-					// Skip if empty or numeric
-					if ( ! is_string( $current_val ) || empty( $current_val ) || is_numeric( $current_val ) ) {
-						continue;
+				if ( empty( $rows ) ) {
+					break;
+				}
+
+				foreach ( $rows as $row ) {
+					$report['rows_checked']++;
+					$update_needed = false;
+					$update_data   = array();
+
+					foreach ( $columns as $column ) {
+						$current_val = $row[ $column ];
+						
+						// Skip if empty or numeric
+						if ( ! is_string( $current_val ) || empty( $current_val ) || is_numeric( $current_val ) ) {
+							continue;
+						}
+
+						// Process value
+						$new_val = self::recursive_replace( $search, $replace, $current_val );
+
+						if ( $new_val !== $current_val ) {
+							$update_needed = true;
+							$update_data[ $column ] = $new_val;
+						}
 					}
 
-					// Process value
-					$new_val = self::recursive_replace( $search, $replace, $current_val );
-
-					if ( $new_val !== $current_val ) {
-						$update_needed = true;
-						$update_data[ $column ] = $new_val;
+					// If changes needed, update database (unless dry run)
+					if ( $update_needed ) {
+						$report['rows_changed']++;
+						
+						if ( ! $dry_run ) {
+							$where = array( $primary_key => $row[ $primary_key ] );
+							$wpdb->update( $table, $update_data, $where ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+						}
 					}
 				}
 
-				// If changes needed, update database (unless dry run)
-				if ( $update_needed ) {
-					$report['rows_changed']++;
-					
-					if ( ! $dry_run ) {
-						$where = array( $primary_key => $row[ $primary_key ] );
-						/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching */ 
-						$wpdb->update( $table, $update_data, $where );
-					}
+				$offset += $chunk_size;
+				if ( count( $rows ) < $chunk_size ) {
+					break;
 				}
 			}
 		}
@@ -111,7 +142,7 @@ class Nexura_Redirects_Search_Replace {
 			// Check if serialized
 			if ( is_serialized( $data ) ) {
 				$unserialized = maybe_unserialize( $data );
-				if ( false !== $unserialized && is_array( $unserialized ) || is_object( $unserialized ) ) {
+				if ( false !== $unserialized && ( is_array( $unserialized ) || is_object( $unserialized ) ) ) {
 					$unserialized = self::recursive_replace( $search, $replace, $unserialized );
 					return serialize( $unserialized );
 				}

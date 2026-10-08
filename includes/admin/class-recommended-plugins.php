@@ -42,6 +42,10 @@ class Nexura_Redirects_Recommended_Plugins {
 					$plugin_slug = 'nexura-security';
 					$plugin_file = 'nexura-security/nexura-security.php';
 					
+					if ( ! function_exists( 'is_plugin_active' ) ) {
+						require_once ABSPATH . 'wp-admin/includes/plugin.php';
+					}
+
 					if ( is_plugin_active( $plugin_file ) ) {
 						echo '<span class="button button-disabled">' . esc_html__( 'Active', 'nexura-redirects' ) . '</span>';
 					} else {

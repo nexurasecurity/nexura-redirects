@@ -16,6 +16,57 @@ class Nexura_Redirects_Logger {
 	public function __construct() {
 		// Hook into template_redirect to catch 404s (Run late, priority 99).
 		add_action( 'template_redirect', array( $this, 'track_404_errors' ), 99 );
+		
+		// Hook daily cleanup routine
+		add_action( 'nexura_redirects_daily_cleanup', array( __CLASS__, 'cleanup_old_logs' ) );
+	}
+
+	/**
+	 * Clean up logs older than configured retention period.
+	 * Triggered by WP-Cron.
+	 */
+	public static function cleanup_old_logs() {
+		global $wpdb;
+
+		// 1. Redirect logs retention
+		$redirect_retention = get_option( 'nexura_redirect_log_retention', 'week' );
+		$table_redirect_logs = $wpdb->prefix . 'nexura_redirect_logs';
+
+		if ( 'none' === $redirect_retention ) {
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$wpdb->query( "TRUNCATE TABLE {$table_redirect_logs}" );
+		} elseif ( 'forever' !== $redirect_retention ) {
+			$days = 7;
+			if ( 'day' === $redirect_retention ) {
+				$days = 1;
+			} elseif ( 'month' === $redirect_retention ) {
+				$days = 30;
+			}
+
+			$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) );
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_redirect_logs} WHERE created_at < %s", $cutoff ) );
+		}
+
+		// 2. 404 logs retention
+		$log_404_retention = get_option( 'nexura_404_log_retention', 'week' );
+		$table_404_logs    = $wpdb->prefix . 'nexura_404_logs';
+
+		if ( 'none' === $log_404_retention ) {
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$wpdb->query( "TRUNCATE TABLE {$table_404_logs}" );
+		} elseif ( 'forever' !== $log_404_retention ) {
+			$days = 7;
+			if ( 'day' === $log_404_retention ) {
+				$days = 1;
+			} elseif ( 'month' === $log_404_retention ) {
+				$days = 30;
+			}
+
+			$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) );
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_404_logs} WHERE last_seen < %s", $cutoff ) );
+		}
 	}
 
 	/**
@@ -80,7 +131,7 @@ class Nexura_Redirects_Logger {
 		if ( $existing ) {
 			// Update hits and last seen.
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter
-			$wpdb->query( $wpdb->prepare( "UPDATE {$table_404} SET hits = hits + 1, last_seen = current_timestamp(), visitor_ip = %s, user_agent = %s, referrer = %s WHERE id = %d", $visitor_ip, $user_agent, $referrer, $existing->id ) );
+			$wpdb->query( $wpdb->prepare( "UPDATE {$table_404} SET hits = hits + 1, last_seen = %s, visitor_ip = %s, user_agent = %s, referrer = %s WHERE id = %d", current_time( 'mysql' ), $visitor_ip, $user_agent, $referrer, $existing->id ) );
 		} else {
 			// Insert new 404 record.
 			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->insert(
@@ -98,6 +149,7 @@ class Nexura_Redirects_Logger {
 
 	/**
 	 * Get visitor IP address safely.
+	 * Supports Cloudflare, Proxies, and IPv4/IPv6 validation.
 	 * 
 	 * @return string The IP address.
 	 */
@@ -109,17 +161,30 @@ class Nexura_Redirects_Logger {
 
 		$ip = '127.0.0.1'; // Default
 
-		if ( ! empty( sanitize_text_field( wp_unslash( $_SERVER['HTTP_CLIENT_IP'] ?? '' ) ) ) ) {
-			$ip = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CLIENT_IP'] ?? '' ) );
-		} elseif ( ! empty( sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '' ) ) ) ) {
-			// Can sometimes contain multiple IPs comma-separated.
-			$ip_list = explode( ',', sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '' ) ) );
-			$ip = trim( $ip_list[0] );
-		} elseif ( ! empty( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ) ) ) {
-			$ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) );
+		// Check Cloudflare Connecting IP first (common on live servers)
+		if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+			$cf_ip = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
+			if ( filter_var( $cf_ip, FILTER_VALIDATE_IP ) ) {
+				$ip = $cf_ip;
+			}
+		} elseif ( ! empty( $_SERVER['HTTP_CLIENT_IP'] ) ) {
+			$client_ip = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CLIENT_IP'] ) );
+			if ( filter_var( $client_ip, FILTER_VALIDATE_IP ) ) {
+				$ip = $client_ip;
+			}
+		} elseif ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+			$forwarded = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
+			$ip_list   = explode( ',', $forwarded );
+			$first_ip  = trim( $ip_list[0] );
+			if ( filter_var( $first_ip, FILTER_VALIDATE_IP ) ) {
+				$ip = $first_ip;
+			}
+		} elseif ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+			$remote_ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+			if ( filter_var( $remote_ip, FILTER_VALIDATE_IP ) ) {
+				$ip = $remote_ip;
+			}
 		}
-
-		$ip = sanitize_text_field( wp_unslash( $ip ) );
 
 		// Use WordPress native IP anonymization for GDPR compliance (WP 4.9.6+).
 		if ( $ip_logging === 'anonymized' && function_exists( 'wp_privacy_anonymize_ip' ) ) {

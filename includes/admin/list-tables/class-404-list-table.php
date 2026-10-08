@@ -16,8 +16,8 @@ class Nexura_Redirects_404_List_Table extends WP_List_Table {
 
 	public function __construct() {
 		parent::__construct( array(
-			'singular' => __( '404 Error', 'nexura-redirects' ),
-			'plural'   => __( '404 Errors', 'nexura-redirects' ),
+			'singular' => '404',
+			'plural'   => '404s',
 			'ajax'     => false,
 		) );
 	}
@@ -81,9 +81,49 @@ class Nexura_Redirects_404_List_Table extends WP_List_Table {
 
 	public function get_bulk_actions() {
 		$actions = array(
-			'bulk-delete-404' => 'Delete',
+			'bulk-delete-404' => __( 'Delete', 'nexura-redirects' ),
 		);
 		return $actions;
+	}
+
+	/**
+	 * Process single and bulk delete actions.
+	 */
+	public function process_bulk_action() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'nexura_404_logs';
+
+		// Single delete
+		if ( 'delete' === $this->current_action() && isset( $_GET['log'] ) ) {
+			$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+			if ( ! wp_verify_nonce( $nonce, 'nexura_delete_404' ) ) {
+				wp_die( esc_html__( 'Security check failed.', 'nexura-redirects' ) );
+			}
+
+			$log_id = absint( $_GET['log'] );
+			if ( $log_id ) {
+				$wpdb->delete( $table_name, array( 'id' => $log_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			}
+		}
+
+		// Bulk delete
+		if ( 'bulk-delete-404' === $this->current_action() && isset( $_REQUEST['bulk-delete-404'] ) ) {
+			$nonce = isset( $_REQUEST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ) : '';
+			if ( ! wp_verify_nonce( $nonce, 'bulk-' . $this->_args['plural'] ) ) {
+				wp_die( esc_html__( 'Security check failed.', 'nexura-redirects' ) );
+			}
+
+			$ids = array_map( 'absint', (array) wp_unslash( $_REQUEST['bulk-delete-404'] ) );
+			if ( ! empty( $ids ) ) {
+				$placeholders = implode( ', ', array_fill( 0, count( $ids ), '%d' ) );
+				/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+				$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_name} WHERE id IN ($placeholders)", ...$ids ) );
+			}
+		}
 	}
 
 	public function prepare_items() {
@@ -97,30 +137,50 @@ class Nexura_Redirects_404_List_Table extends WP_List_Table {
 
 		$this->_column_headers = array( $columns, $hidden, $sortable );
 
-		// Fetch Data
-		$query = "SELECT * FROM {$table_name}";
-		$args  = array();
-		
+		$this->process_bulk_action();
+
+		// Base query
+		$where_clauses = array();
+		$where_values  = array();
+
+		// Search
+		if ( ! empty( $_REQUEST['s'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$search = sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$where_clauses[] = 'url LIKE %s';
+			$where_values[]  = '%' . $wpdb->esc_like( $search ) . '%';
+		}
+
+		$where_sql = '';
+		if ( ! empty( $where_clauses ) ) {
+			$where_sql = ' WHERE ' . implode( ' AND ', $where_clauses );
+		}
+
+		// Count total items efficiently without subquery
+		$count_sql = "SELECT COUNT(*) FROM {$table_name}{$where_sql}";
+		if ( ! empty( $where_values ) ) {
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$total_items = (int) $wpdb->get_var( $wpdb->prepare( $count_sql, $where_values ) );
+		} else {
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$total_items = (int) $wpdb->get_var( $count_sql );
+		}
+
 		// Sorting
-		$orderby = ( isset( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_GET['orderby'] ) ) ? sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_GET['orderby'] ) ) : 'last_seen';
-		$order   = ( isset( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_GET['order'] ) ) ? sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_GET['order'] ) ) : 'DESC';
+		$orderby = ( isset( $_GET['orderby'] ) ) ? sanitize_text_field( wp_unslash( $_GET['orderby'] ) ) : 'last_seen'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$order   = ( isset( $_GET['order'] ) ) ? sanitize_text_field( wp_unslash( $_GET['order'] ) ) : 'DESC'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		
-		// Validating orderby and order
 		$valid_columns = array( 'url', 'hits', 'last_seen', 'id' );
 		$orderby = in_array( $orderby, $valid_columns, true ) ? $orderby : 'last_seen';
-		$order = ( 'ASC' === strtoupper( $order ) ) ? 'ASC' : 'DESC';
+		$order   = ( 'ASC' === strtoupper( $order ) ) ? 'ASC' : 'DESC';
 
-		$query .= " ORDER BY {$orderby} {$order}";
-
-		// Pagination
 		$current_page = $this->get_pagenum();
-		$total_items  = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_var( "SELECT COUNT(id) FROM {$table_name}" );
-		
-		$offset = ( $current_page - 1 ) * $per_page;
-		$query .= " LIMIT %d OFFSET %d";
-		$args[] = $per_page;
-		$args[] = $offset;
-		$this->items = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_results( /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->prepare( $query, ...$args ), ARRAY_A );
+		$offset       = ( $current_page - 1 ) * $per_page;
+
+		$query = "SELECT * FROM {$table_name}{$where_sql} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";
+		$query_params = array_merge( $where_values, array( $per_page, $offset ) );
+
+		/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+		$this->items = $wpdb->get_results( $wpdb->prepare( $query, $query_params ), ARRAY_A );
 
 		$this->set_pagination_args( array(
 			'total_items' => $total_items,

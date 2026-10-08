@@ -16,8 +16,8 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 
 	public function __construct() {
 		parent::__construct( array(
-			'singular' => __( 'Redirect', 'nexura-redirects' ),
-			'plural'   => __( 'Redirects', 'nexura-redirects' ),
+			'singular' => 'redirect',
+			'plural'   => 'redirects',
 			'ajax'     => false,
 		) );
 	}
@@ -217,44 +217,50 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 		$this->process_bulk_action();
 
 		// Fetch Data
-		$query = "SELECT * FROM $table_name";
-		$args = array();
+		$where_clauses = array();
+		$where_values  = array();
 		
 		// Search
-		if ( ! empty( sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_REQUEST['s'] ?? '' ) ) ) ) {
-			$search = sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_REQUEST['s'] ?? '' ) );
-			$query .= " WHERE old_url LIKE %s OR new_url LIKE %s";
+		if ( ! empty( $_REQUEST['s'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$search = sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$like = '%' . $wpdb->esc_like( $search ) . '%';
-			$args[] = $like;
-			$args[] = $like;
+			$where_clauses[] = "(old_url LIKE %s OR new_url LIKE %s)";
+			$where_values[]  = $like;
+			$where_values[]  = $like;
+		}
+
+		$where_sql = '';
+		if ( ! empty( $where_clauses ) ) {
+			$where_sql = ' WHERE ' . implode( ' AND ', $where_clauses );
+		}
+
+		// Count total items directly without subquery
+		$count_sql = "SELECT COUNT(id) FROM {$table_name}{$where_sql}";
+		if ( ! empty( $where_values ) ) {
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$total_items = (int) $wpdb->get_var( $wpdb->prepare( $count_sql, $where_values ) );
+		} else {
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$total_items = (int) $wpdb->get_var( $count_sql );
 		}
 
 		// Sorting
-		$orderby = ( isset( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_GET['orderby'] ) ) ? sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_GET['orderby'] ) ) : 'id';
-		$order   = ( isset( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_GET['order'] ) ) ? sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_GET['order'] ) ) : 'DESC';
+		$orderby = ( isset( $_GET['orderby'] ) ) ? sanitize_text_field( wp_unslash( $_GET['orderby'] ) ) : 'id'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$order   = ( isset( $_GET['order'] ) ) ? sanitize_text_field( wp_unslash( $_GET['order'] ) ) : 'DESC'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		
 		// Validating orderby and order
 		$valid_columns = array( 'old_url', 'new_url', 'hits', 'status_code', 'id' );
 		$orderby = in_array( $orderby, $valid_columns, true ) ? $orderby : 'id';
-		$order = ( 'ASC' === strtoupper( $order ) ) ? 'ASC' : 'DESC';
+		$order   = ( 'ASC' === strtoupper( $order ) ) ? 'ASC' : 'DESC';
 
-		$query .= " ORDER BY $orderby $order";
-
-		if ( ! empty( $args ) ) {
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-			$prepared_query = $wpdb->prepare( $query, $args );
-		} else {
-			$prepared_query = $query;
-		}
-
-		// Pagination
 		$current_page = $this->get_pagenum();
-		$total_items  = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_var( "SELECT COUNT(id) FROM ($prepared_query) AS count_table" );
-		
-		$offset = ( $current_page - 1 ) * $per_page;
-		$prepared_query .= /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->prepare( " LIMIT %d OFFSET %d", $per_page, $offset );
+		$offset       = ( $current_page - 1 ) * $per_page;
 
-		$this->items = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_results( $prepared_query, ARRAY_A );
+		$query = "SELECT * FROM {$table_name}{$where_sql} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";
+		$query_params = array_merge( $where_values, array( $per_page, $offset ) );
+
+		/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+		$this->items = $wpdb->get_results( $wpdb->prepare( $query, $query_params ), ARRAY_A );
 
 		$this->set_pagination_args( array(
 			'total_items' => $total_items,
@@ -270,7 +276,9 @@ class Nexura_Redirects_List_Table extends WP_List_Table {
 		$action = $this->current_action();
 
 		if ( 'delete' === $action || 'bulk-delete' === $action ) {
-			
+			if ( ! current_user_can( 'manage_options' ) ) {
+				return;
+			}
 			$nonce = isset( $_REQUEST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ) : '';
 			
 			// Verify nonce (it could be a single delete or bulk delete)

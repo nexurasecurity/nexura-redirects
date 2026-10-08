@@ -64,12 +64,18 @@ class Nexura_Redirects_Auto {
 			return;
 		}
 
-		// Check if redirect already exists for this old URL.
-		$existing = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_var( /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->prepare( "SELECT id FROM $table_name WHERE old_url = %s LIMIT 1", $old_url ) );
+		// 1. Remove any reverse or obsolete redirect pointing away from the new URL
+		/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+		$wpdb->query( $wpdb->prepare( "DELETE FROM $table_name WHERE old_url = %s", $new_url ) );
+
+		// 2. Check if redirect already exists for this old URL.
+		/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+		$existing = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $table_name WHERE old_url = %s LIMIT 1", $old_url ) );
 
 		if ( $existing ) {
 			// Update existing redirect.
-			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->update(
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching */
+			$wpdb->update(
 				$table_name,
 				array( 'new_url' => $new_url ),
 				array( 'id' => $existing ),
@@ -78,15 +84,17 @@ class Nexura_Redirects_Auto {
 			);
 		} else {
 			// Insert new redirect.
-			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->insert(
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching */
+			$wpdb->insert(
 				$table_name,
 				array(
 					'old_url'     => $old_url,
 					'new_url'     => $new_url,
 					'status_code' => 301,
-					'match_type'  => 'exact',
+					'match_type'  => 'url',
+					'last_accessed' => current_time( 'mysql' ),
 				),
-				array( '%s', '%s', '%d', '%s' )
+				array( '%s', '%s', '%d', '%s', '%s' )
 			);
 		}
 	}

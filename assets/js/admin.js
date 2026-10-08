@@ -108,7 +108,8 @@ jQuery(document).ready(function($) {
 					btn.text('Add Redirect').prop('disabled', false).removeClass('button-secondary').addClass('button-primary');
 				}, 2000);
 			} else {
-				alert(response.data);
+				var errorMsg = (response.data && response.data.message) ? response.data.message : (typeof response.data === 'string' ? response.data : 'Error occurred.');
+				alert(errorMsg);
 				btn.text('Add Redirect').prop('disabled', false);
 			}
 		});

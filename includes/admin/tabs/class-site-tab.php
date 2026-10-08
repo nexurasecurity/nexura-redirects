@@ -11,11 +11,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Nexura_Redirects_Site_Tab {
 
 	public static function render() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		// Handle Save Settings
 		if ( isset( $_POST['nexura_save_site'] ) && check_admin_referer( 'nexura_site_action', 'nexura_site_nonce' ) ) {
-			update_option( 'nexura_site_relocate', sanitize_text_field( wp_unslash( sanitize_text_field( wp_unslash( $_POST['relocate_domain'] ?? '' ) ) ) ) );
+			update_option( 'nexura_site_relocate', esc_url_raw( wp_unslash( $_POST['relocate_domain'] ?? '' ) ) );
 			update_option( 'nexura_site_force_https', isset( $_POST['force_https'] ) ? 1 : 0 );
-			update_option( 'nexura_site_preferred_domain', sanitize_text_field( wp_unslash( sanitize_text_field( wp_unslash( $_POST['preferred_domain'] ?? '' ) ) ) ) );
+			update_option( 'nexura_site_preferred_domain', sanitize_text_field( wp_unslash( $_POST['preferred_domain'] ?? '' ) ) );
 			
 			// Handle Aliases
 			if ( isset( $_POST['site_aliases'] ) && is_array( $_POST['site_aliases'] ) ) {
