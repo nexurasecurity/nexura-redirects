@@ -14,6 +14,10 @@ class Nexura_Redirects_Options_Tab {
 	 * Render the Options tab.
 	 */
 	public static function render() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		// Handle Data Deletion
 		if ( isset( $_POST['nexura_delete_data'] ) && check_admin_referer( 'nexura_delete_data_action', 'nexura_delete_data_nonce' ) ) {
 			global $wpdb;
@@ -27,27 +31,42 @@ class Nexura_Redirects_Options_Tab {
 			);
 
 			foreach ( $tables as $table ) {
-				/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared */
+				/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
 				$wpdb->query( "TRUNCATE TABLE {$table}" );
 			}
 			
+			// Re-insert default "Redirections" group (group_id = 1)
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching */
+			$wpdb->insert(
+				$wpdb->prefix . 'nexura_redirect_groups',
+				array(
+					'id'        => 1,
+					'name'      => 'Redirections',
+					'module_id' => 'wordpress',
+				),
+				array( '%d', '%s', '%s' )
+			);
+
 			// Delete all plugin options
 			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared */
 			$wpdb->query( "DELETE FROM {$wpdb->prefix}options WHERE option_name LIKE 'nexura\_%'" );
 
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'All Nexura Redirects data has been successfully deleted.', 'nexura-redirects' ) . '</p></div>';
+			// Restore installed version so update check works cleanly
+			update_option( 'nexura_redirects_version', NEXURA_REDIRECTS_VERSION );
+
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'All Nexura Redirects data has been successfully reset.', 'nexura-redirects' ) . '</p></div>';
 		}
 
 		// Save settings if form is submitted
 		if ( isset( $_POST['nexura_save_options'] ) && check_admin_referer( 'nexura_options_action', 'nexura_options_nonce' ) ) {
-			update_option( 'nexura_redirect_log_retention', sanitize_text_field( wp_unslash( sanitize_text_field( wp_unslash( $_POST['redirect_log_retention'] ?? '' ) ) ) ) );
-			update_option( 'nexura_404_log_retention', sanitize_text_field( wp_unslash( sanitize_text_field( wp_unslash( $_POST['404_log_retention'] ?? '' ) ) ) ) );
-			update_option( 'nexura_ip_logging', sanitize_text_field( wp_unslash( sanitize_text_field( wp_unslash( $_POST['ip_logging'] ?? '' ) ) ) ) );
+			update_option( 'nexura_redirect_log_retention', sanitize_text_field( wp_unslash( $_POST['redirect_log_retention'] ?? '' ) ) );
+			update_option( 'nexura_404_log_retention', sanitize_text_field( wp_unslash( $_POST['404_log_retention'] ?? '' ) ) );
+			update_option( 'nexura_ip_logging', sanitize_text_field( wp_unslash( $_POST['ip_logging'] ?? '' ) ) );
 			update_option( 'nexura_url_monitor', isset( $_POST['url_monitor'] ) ? 1 : 0 );
 			update_option( 'nexura_default_case_insensitive', isset( $_POST['default_case_insensitive'] ) ? 1 : 0 );
 			update_option( 'nexura_default_ignore_slash', isset( $_POST['default_ignore_slash'] ) ? 1 : 0 );
-			update_option( 'nexura_default_query_matching', sanitize_text_field( wp_unslash( sanitize_text_field( wp_unslash( $_POST['default_query_matching'] ?? '' ) ) ) ) );
-			update_option( 'nexura_apache_htaccess_path', sanitize_text_field( wp_unslash( sanitize_text_field( wp_unslash( $_POST['apache_htaccess_path'] ?? '' ) ) ) ) );
+			update_option( 'nexura_default_query_matching', sanitize_text_field( wp_unslash( $_POST['default_query_matching'] ?? '' ) ) );
+			update_option( 'nexura_apache_htaccess_path', sanitize_text_field( wp_unslash( $_POST['apache_htaccess_path'] ?? '' ) ) );
 			
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Options saved successfully.', 'nexura-redirects' ) . '</p></div>';
 		}

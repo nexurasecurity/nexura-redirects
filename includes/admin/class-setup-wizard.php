@@ -20,6 +20,10 @@ class Nexura_Redirects_Setup_Wizard {
 			return;
 		}
 
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		$step = isset( $_GET['step'] ) ? intval( wp_unslash( $_GET['step'] ) ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		// Handle form submission for Step 1
@@ -30,14 +34,21 @@ class Nexura_Redirects_Setup_Wizard {
 			$enable_auto = isset( $_POST['enable_auto_redirect'] ) ? 1 : 0;
 			$store_ip = isset( $_POST['store_ip_info'] ) ? 1 : 0;
 			
-			update_option( 'nexura_redirects_enable_404', $enable_404 );
-			update_option( 'nexura_redirects_enable_auto', $enable_auto );
-			update_option( 'nexura_redirects_store_ip', $store_ip );
+			// Save active plugin options so wizard choices take effect immediately
+			update_option( 'nexura_404_log_retention', $enable_404 ? 'week' : 'none' );
+			update_option( 'nexura_redirect_log_retention', $enable_404 ? 'week' : 'none' );
+			update_option( 'nexura_url_monitor', $enable_auto ? 1 : 0 );
+			update_option( 'nexura_ip_logging', $store_ip ? 'full' : 'none' );
+			update_option( 'nexura_redirects_setup_completed', 1 );
 			
 			// Process Auto-Install Nexura Security
 			if ( isset( $_POST['install_nexura_security'] ) ) {
 				$plugin_file = 'nexura-security/nexura-security.php';
 				
+				if ( ! function_exists( 'is_plugin_active' ) ) {
+					require_once ABSPATH . 'wp-admin/includes/plugin.php';
+				}
+
 				if ( ! is_plugin_active( $plugin_file ) ) {
 					if ( ! file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
 						// Install it
@@ -86,6 +97,10 @@ class Nexura_Redirects_Setup_Wizard {
 	 * Render the Setup Wizard UI.
 	 */
 	public static function render() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		$step = isset( $_GET['step'] ) ? intval( wp_unslash( $_GET['step'] ) ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		

@@ -108,24 +108,41 @@ class Nexura_Redirects_Engine {
 		$parsed_full = wp_parse_url( $full_url );
 		$full_path_only = isset( $parsed_full['scheme'], $parsed_full['host'] ) ? $parsed_full['scheme'] . '://' . $parsed_full['host'] . $path_only : '';
 
-		// 1. Try Exact Match First (Fastest)
-		/* phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared */
-		$query = $wpdb->prepare( "SELECT * FROM {$table_name} WHERE (old_url = %s OR old_url = %s OR old_url = %s) AND status_code > 0 LIMIT 1", $request_uri, $relative_uri, $full_url );
-		/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
-		$redirect = $wpdb->get_row( $query );
+		$ignore_slash   = (bool) get_option( 'nexura_default_ignore_slash', 1 );
+		$query_matching = get_option( 'nexura_default_query_matching', 'exact' );
 
-		// 2. If no exact match on full URI, try matching just the path
-		if ( ! $redirect && $request_uri !== $path_only ) {
-			/* phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared */
-			$query_path = $wpdb->prepare( "SELECT * FROM {$table_name} WHERE (old_url = %s OR old_url = %s OR old_url = %s) AND status_code > 0 LIMIT 1", $path_only, $relative_path_only, $full_path_only );
-			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
-			$redirect = $wpdb->get_row( $query_path );
+		// 1. Build candidates for matching
+		$candidates = array( $request_uri, $relative_uri, $full_url );
+		if ( $request_uri !== $path_only ) {
+			$candidates[] = $path_only;
+			$candidates[] = $relative_path_only;
+			if ( ! empty( $full_path_only ) ) {
+				$candidates[] = $full_path_only;
+			}
 		}
 
-		// 3. Regex Matching
+		if ( $ignore_slash ) {
+			$slash_variants = array();
+			foreach ( $candidates as $candidate ) {
+				$slash_variants[] = untrailingslashit( $candidate );
+				$slash_variants[] = trailingslashit( $candidate );
+			}
+			$candidates = array_merge( $candidates, $slash_variants );
+		}
+
+		$candidates = array_values( array_unique( array_filter( $candidates ) ) );
+
+		$redirect = null;
+		if ( ! empty( $candidates ) ) {
+			$placeholders = implode( ', ', array_fill( 0, count( $candidates ), '%s' ) );
+			/* phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$redirect = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE old_url IN ($placeholders) AND status_code > 0 LIMIT 1", $candidates ) );
+		}
+
+		// 2. Regex Matching if no exact/path rule matched
 		if ( ! $redirect ) {
 			// Fetch all regex redirects
-			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared */
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
 			$regex_redirects = $wpdb->get_results( "SELECT * FROM {$table_name} WHERE match_type LIKE '%regex%' AND status_code > 0" );
 			
 			if ( $regex_redirects ) {
@@ -137,8 +154,12 @@ class Nexura_Redirects_Engine {
 					}
 					
 					$test_urls = array( $request_uri, $relative_uri, $path_only, $full_url );
+					if ( $ignore_slash ) {
+						$test_urls[] = untrailingslashit( $path_only );
+						$test_urls[] = trailingslashit( $path_only );
+					}
 					
-					foreach ( $test_urls as $url ) {
+					foreach ( array_unique( $test_urls ) as $url ) {
 						// Suppress warnings in case of malformed user regex
 						if ( @preg_match( $pattern, $url, $matches ) ) {
 							$redirect = clone $rule;
@@ -155,9 +176,28 @@ class Nexura_Redirects_Engine {
 			}
 		}
 
-		// Loop prevention check: if the redirect target is the same as the current URL.
-		if ( $redirect && wp_make_link_relative( $redirect->new_url ) === $request_uri ) {
-			return;
+		// Pass query parameters to target if enabled
+		if ( $redirect && $query_matching === 'pass' && ! empty( $parsed_uri['query'] ) ) {
+			$query_args = array();
+			wp_parse_str( $parsed_uri['query'], $query_args );
+			if ( ! empty( $query_args ) ) {
+				$redirect->new_url = add_query_arg( $query_args, $redirect->new_url );
+			}
+		}
+
+		// Loop prevention check: if the redirect target is identical to the current requested URL.
+		if ( $redirect ) {
+			$target_host = wp_parse_url( $redirect->new_url, PHP_URL_HOST );
+			$current_host = wp_parse_url( home_url(), PHP_URL_HOST );
+			$is_internal = empty( $target_host ) || ( $target_host === $current_host );
+
+			if ( $is_internal ) {
+				$target_path = untrailingslashit( wp_make_link_relative( $redirect->new_url ) );
+				$curr_path   = untrailingslashit( $relative_path_only );
+				if ( $target_path === $curr_path ) {
+					return;
+				}
+			}
 		}
 
 		// If match found, perform the redirect.
@@ -183,14 +223,30 @@ class Nexura_Redirects_Engine {
 			$status_code = 301;
 		}
 
-		// Update hit count and last accessed time asynchronously or directly.
+		// Update hit count and last accessed time.
 		$table_name = $wpdb->prefix . 'nexura_redirects';
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-		$wpdb->query( $wpdb->prepare( "UPDATE {$table_name} SET hits = hits + 1, last_accessed = current_timestamp() WHERE id = %d", $redirect->id ) );
+		$wpdb->query( $wpdb->prepare( "UPDATE {$table_name} SET hits = hits + 1, last_accessed = %s WHERE id = %d", current_time( 'mysql' ), $redirect->id ) );
 
-		// Log the hit if logger class exists (Phase 1 task).
+		// Log the hit if logger class exists.
 		if ( class_exists( 'Nexura_Redirects_Logger' ) ) {
 			Nexura_Redirects_Logger::log_redirect( $redirect->id );
+		}
+
+		// Add custom WordPress redirect header
+		if ( ! headers_sent() ) {
+			header( 'X-Redirect-By: Nexura Redirects' );
+		}
+
+		// Allow external domain redirection safely via allowed_redirect_hosts filter
+		$target_host = wp_parse_url( $new_url, PHP_URL_HOST );
+		if ( ! empty( $target_host ) ) {
+			add_filter( 'allowed_redirect_hosts', function( $hosts ) use ( $target_host ) {
+				if ( is_array( $hosts ) ) {
+					$hosts[] = $target_host;
+				}
+				return $hosts;
+			} );
 		}
 
 		// Perform redirect

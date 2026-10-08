@@ -17,9 +17,6 @@ class Nexura_Redirects_Post_Meta_Box {
 	public function __construct() {
 		// Add Meta Box
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_box' ) );
-		
-		// Hook for permalink changes (Auto-monitor)
-		add_action( 'post_updated', array( $this, 'monitor_permalink_changes' ), 10, 3 );
 
 		// AJAX handler for quick add redirect
 		add_action( 'wp_ajax_nexura_quick_add_redirect', array( $this, 'ajax_add_redirect' ) );
@@ -35,14 +32,14 @@ class Nexura_Redirects_Post_Meta_Box {
 		check_ajax_referer( 'nexura_save_post_redirect', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+			wp_send_json_error( array( 'message' => esc_html__( 'Unauthorized user.', 'nexura-redirects' ) ) );
 		}
 
 		$source = isset( $_POST['source'] ) ? sanitize_text_field( wp_unslash( $_POST['source'] ) ) : '';
 		$target = isset( $_POST['target'] ) ? sanitize_text_field( wp_unslash( $_POST['target'] ) ) : '';
 
 		if ( empty( $source ) || empty( $target ) ) {
-			wp_send_json_error( array( 'message' => 'Source or target is empty.' ) );
+			wp_send_json_error( array( 'message' => esc_html__( 'Source or target is empty.', 'nexura-redirects' ) ) );
 		}
 
 		global $wpdb;
@@ -53,23 +50,32 @@ class Nexura_Redirects_Post_Meta_Box {
 			$source = '/' . $source;
 		}
 
+		// Only make relative if internal
+		$target_host = wp_parse_url( $target, PHP_URL_HOST );
+		$current_host = wp_parse_url( home_url(), PHP_URL_HOST );
+		if ( empty( $target_host ) || $target_host === $current_host ) {
+			$target = wp_make_link_relative( $target );
+		}
+
 		/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching */
 		$inserted = $wpdb->insert(
 			$table,
 			array(
 				'old_url'     => $source,
-				'new_url'     => wp_make_link_relative( $target ),
+				'new_url'     => $target,
 				'status_code' => 301,
 				'group_id'    => 1,
-				'match_type'  => 'url'
-			)
+				'match_type'  => 'url',
+				'last_accessed' => current_time( 'mysql' ),
+			),
+			array( '%s', '%s', '%d', '%d', '%s', '%s' )
 		);
 
 		if ( $inserted ) {
 			$insert_id = $wpdb->insert_id;
-			wp_send_json_success( array( 'message' => 'Redirect added successfully.', 'id' => $insert_id ) );
+			wp_send_json_success( array( 'message' => esc_html__( 'Redirect added successfully.', 'nexura-redirects' ), 'id' => $insert_id ) );
 		} else {
-			wp_send_json_error( array( 'message' => 'Database error.' ) );
+			wp_send_json_error( array( 'message' => esc_html__( 'Database error.', 'nexura-redirects' ) ) );
 		}
 	}
 
@@ -179,54 +185,5 @@ class Nexura_Redirects_Post_Meta_Box {
 		</div>
 
 		<?php
-	}
-
-	/**
-	 * Catch permalink changes and auto-create redirects.
-	 *
-	 * @param int     $post_ID      Post ID.
-	 * @param WP_Post $post_after   Post object following the update.
-	 * @param WP_Post $post_before  Post object before the update.
-	 */
-	public function monitor_permalink_changes( $post_ID, $post_after, $post_before ) {
-		// Only run if the feature is enabled in Options
-		if ( ! get_option( 'nexura_url_monitor', 1 ) ) {
-			return;
-		}
-
-		// Don't monitor revisions or autosaves
-		if ( wp_is_post_revision( $post_ID ) || wp_is_post_autosave( $post_ID ) ) {
-			return;
-		}
-		
-		// Only track published posts
-		if ( 'publish' !== $post_before->post_status || 'publish' !== $post_after->post_status ) {
-			return;
-		}
-
-		$old_url = wp_make_link_relative( get_permalink( $post_before ) );
-		$new_url = wp_make_link_relative( get_permalink( $post_after ) );
-
-		// If URL changed, create a redirect
-		if ( $old_url !== $new_url && ! empty( $old_url ) && ! empty( $new_url ) ) {
-			global $wpdb;
-			$table = $wpdb->prefix . 'nexura_redirects';
-			
-			// Check if redirect already exists to prevent duplicates
-			$exists = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_var( /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->prepare( "SELECT id FROM $table WHERE old_url = %s", $old_url ) );
-			
-			if ( ! $exists ) {
-				/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->insert(
-					$table,
-					array(
-						'old_url'     => $old_url,
-						'new_url'     => $new_url,
-						'status_code' => 301,
-						'group_id'    => 1, // Default group
-						'match_type'  => 'url'
-					)
-				);
-			}
-		}
 	}
 }

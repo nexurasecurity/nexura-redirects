@@ -75,6 +75,7 @@ class Nexura_Redirects_Import_Export_Tab {
 			<p class="description"><?php esc_html_e( 'Export your redirects and logs. You can export everything, or just a specific group.', 'nexura-redirects' ); ?></p>
 			
 			<form method="post" action="">
+			<?php wp_nonce_field( 'nexura_export_action', 'nexura_export_nonce' ); ?>
 			<table class="nexura-options-table" style="margin-top: 30px;">
 				<tr>
 					<th><label for="export_module"><?php esc_html_e( 'Export to:', 'nexura-redirects' ); ?></label></th>

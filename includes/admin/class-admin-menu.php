@@ -33,10 +33,14 @@ class Nexura_Redirects_Admin_Menu {
 			return;
 		}
 
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		require_once NEXURA_REDIRECTS_DIR . 'includes/class-import-export.php';
 
 		// Handle Exports
-		if ( isset( $_POST['nexura_export_redirects'] ) ) {
+		if ( isset( $_POST['nexura_export_redirects'] ) && check_admin_referer( 'nexura_export_action', 'nexura_export_nonce' ) ) {
 			$format = isset( $_POST['export_module'] ) ? sanitize_text_field( wp_unslash( $_POST['export_module'] ) ) : 'csv';
 			if ( $format === 'json' ) {
 				Nexura_Redirects_Import_Export::export_json();
@@ -45,12 +49,16 @@ class Nexura_Redirects_Admin_Menu {
 			}
 		}
 
+		if ( isset( $_POST['nexura_export_logs'] ) && check_admin_referer( 'nexura_export_action', 'nexura_export_nonce' ) ) {
+			Nexura_Redirects_Import_Export::export_404_csv();
+		}
+
 		// Handle Imports
 		if ( isset( $_POST['nexura_import_text_submit'] ) && check_admin_referer( 'nexura_import_text', 'nexura_import_nonce' ) ) {
-			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Raw JSON input expected.
-			$text = isset( $_POST['nexura_import_text'] ) ? wp_unslash( $_POST['nexura_import_text'] ) : '';
+			$text     = isset( $_POST['nexura_import_text'] ) ? wp_unslash( $_POST['nexura_import_text'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$group_id = isset( $_POST['import_text_group'] ) ? absint( $_POST['import_text_group'] ) : 1;
 			if ( ! empty( $text ) ) {
-				$count = Nexura_Redirects_Import_Export::import_json( $text );
+				$count = Nexura_Redirects_Import_Export::import( $text, $group_id );
 				/* translators: %d: number of redirects */
 				add_settings_error( 'nexura_redirects', 'import_success', sprintf( __( '%d redirects imported successfully.', 'nexura-redirects' ), $count ), 'success' );
 			}
@@ -58,8 +66,10 @@ class Nexura_Redirects_Admin_Menu {
 		
 		if ( isset( $_POST['nexura_import_file_submit'] ) && check_admin_referer( 'nexura_import_file', 'nexura_import_nonce' ) ) {
 			if ( ! empty( $_FILES['nexura_import_file']['tmp_name'] ) ) {
-				$file_content = file_get_contents( sanitize_text_field( wp_unslash( $_FILES['nexura_import_file']['tmp_name'] ) ) );
-				$count = Nexura_Redirects_Import_Export::import_json( $file_content );
+				$file_tmp  = sanitize_text_field( wp_unslash( $_FILES['nexura_import_file']['tmp_name'] ) );
+				$file_content = file_get_contents( $file_tmp );
+				$group_id     = isset( $_POST['import_group'] ) ? absint( $_POST['import_group'] ) : 1;
+				$count        = Nexura_Redirects_Import_Export::import( $file_content, $group_id );
 				/* translators: %d: number of redirects */
 				add_settings_error( 'nexura_redirects', 'import_success', sprintf( __( '%d redirects imported successfully.', 'nexura-redirects' ), $count ), 'success' );
 			}
@@ -133,6 +143,7 @@ class Nexura_Redirects_Admin_Menu {
 			'redirects' => __( 'Redirects', 'nexura-redirects' ),
 			'groups'    => __( 'Groups', 'nexura-redirects' ),
 			'site'      => __( 'Site', 'nexura-redirects' ),
+			'migration' => __( 'Migration', 'nexura-redirects' ),
 			'log'       => __( 'Log', 'nexura-redirects' ),
 			'404s'      => __( '404s', 'nexura-redirects' ),
 			'import'    => __( 'Import', 'nexura-redirects' ),
@@ -166,6 +177,9 @@ class Nexura_Redirects_Admin_Menu {
 						break;
 					case 'site':
 						$this->render_site_tab();
+						break;
+					case 'migration':
+						$this->render_migration_tab();
 						break;
 					case 'log':
 						$this->render_log_tab();
@@ -256,14 +270,21 @@ class Nexura_Redirects_Admin_Menu {
 				}
 			}
 			
-			// Target URL can be external, but we make it relative if it's internal
-			$target_url = wp_make_link_relative( $target_url );
+			// Target URL can be external; only make relative if internal
+			$target_host = wp_parse_url( $target_url, PHP_URL_HOST );
+			$current_host = wp_parse_url( home_url(), PHP_URL_HOST );
+			if ( empty( $target_host ) || $target_host === $current_host ) {
+				$target_url = wp_make_link_relative( $target_url );
+			}
 			$group_id    = isset( $_POST['group_id'] ) ? absint( $_POST['group_id'] ) : 1;
 			$match_type  = isset( $_POST['match_type'] ) ? sanitize_text_field( wp_unslash( $_POST['match_type'] ) ) : 'url';
 			if ( $is_regex && strpos( $match_type, 'regex' ) === false ) {
 				$match_type .= '_regex';
 			}
 			$status_code = isset( $_POST['status_code'] ) ? absint( $_POST['status_code'] ) : 301;
+			if ( ! in_array( $status_code, array( 301, 302, 303, 304, 307, 308 ), true ) ) {
+				$status_code = 301;
+			}
 
 			if ( ! empty( $source_url ) && ! empty( $target_url ) ) {
 				$table = $wpdb->prefix . 'nexura_redirects';
@@ -298,7 +319,12 @@ class Nexura_Redirects_Admin_Menu {
 				}
 			}
 			
-			$target_url = wp_make_link_relative( $target_url );
+			// Only make relative if internal
+			$target_host = wp_parse_url( $target_url, PHP_URL_HOST );
+			$current_host = wp_parse_url( home_url(), PHP_URL_HOST );
+			if ( empty( $target_host ) || $target_host === $current_host ) {
+				$target_url = wp_make_link_relative( $target_url );
+			}
 			$group_id    = isset( $_POST['edit_group_id'][$id] ) ? absint( $_POST['edit_group_id'][$id] ) : 1;
 			$match_type  = isset( $_POST['edit_match_type'][$id] ) ? sanitize_text_field( wp_unslash( $_POST['edit_match_type'][$id] ) ) : 'url';
 			if ( $is_regex && strpos( $match_type, 'regex' ) === false ) {
@@ -307,6 +333,9 @@ class Nexura_Redirects_Admin_Menu {
 				$match_type = str_replace( '_regex', '', $match_type );
 			}
 			$status_code = isset( $_POST['edit_status_code'][$id] ) ? absint( $_POST['edit_status_code'][$id] ) : 301;
+			if ( ! in_array( $status_code, array( 301, 302, 303, 304, 307, 308 ), true ) ) {
+				$status_code = 301;
+			}
 
 			if ( ! empty( $source_url ) && ! empty( $target_url ) ) {
 				$table = $wpdb->prefix . 'nexura_redirects';
@@ -333,12 +362,19 @@ class Nexura_Redirects_Admin_Menu {
 		$redirects_table = new Nexura_Redirects_List_Table();
 		$redirects_table->prepare_items();
 		
+		// Pre-populate source URL if redirected from 404 list
+		$prefill_source_url = '';
+		if ( isset( $_GET['action'], $_GET['url'] ) && 'add_from_404' === $_GET['action'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$prefill_source_url = sanitize_text_field( wp_unslash( $_GET['url'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+
 		// Get Groups for dropdown
 		$groups = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_results( "SELECT id, name FROM {$wpdb->prefix}nexura_redirect_groups ORDER BY name ASC" );
 		?>
 		
 		<form method="post">
 			<?php
+			wp_nonce_field( 'bulk-redirects' );
 			$redirects_table->search_box( __( 'Search Redirects', 'nexura-redirects' ), 'search_id' );
 			$redirects_table->display();
 			?>
@@ -356,7 +392,7 @@ class Nexura_Redirects_Admin_Menu {
 							<th scope="row" style="width: 150px; font-weight: 600;"><label for="source_url"><?php esc_html_e( 'Source URL', 'nexura-redirects' ); ?></label></th>
 							<td>
 								<div style="margin-bottom: 8px;">
-									<input type="text" name="source_url" id="source_url" class="regular-text" style="width:100%;" placeholder="<?php esc_attr_e( 'The relative URL you want to redirect from', 'nexura-redirects' ); ?>" required>
+									<input type="text" name="source_url" id="source_url" class="regular-text" style="width:100%;" value="<?php echo esc_attr( $prefill_source_url ); ?>" placeholder="<?php esc_attr_e( 'The relative URL you want to redirect from', 'nexura-redirects' ); ?>" required>
 								</div>
 								<div style="display: flex; gap: 15px; flex-wrap: wrap;">
 									<label style="font-weight: 600;"><input type="checkbox" name="url_regex" value="1"> <?php esc_html_e( 'Regular Expression (Regex)', 'nexura-redirects' ); ?></label>
@@ -472,6 +508,7 @@ class Nexura_Redirects_Admin_Menu {
 		<p><?php esc_html_e( 'Monitor broken links (404s) on your site. Create a redirect directly from here.', 'nexura-redirects' ); ?></p>
 		<form method="post">
 			<?php
+			wp_nonce_field( 'bulk-404s' );
 			$table_404->search_box( __( 'Search URLs', 'nexura-redirects' ), 'search_id' );
 			$table_404->display();
 			?>
@@ -496,6 +533,14 @@ class Nexura_Redirects_Admin_Menu {
 	}
 
 	/**
+	 * Render the Migration & Search Replace tab.
+	 */
+	private function render_migration_tab() {
+		require_once NEXURA_REDIRECTS_DIR . 'includes/admin/tabs/class-migration-tab.php';
+		Nexura_Redirects_Migration_Tab::render();
+	}
+
+	/**
 	 * Render the Log tab (Success Logs).
 	 */
 	private function render_log_tab() {
@@ -510,6 +555,7 @@ class Nexura_Redirects_Admin_Menu {
 		<p><?php esc_html_e( 'View logs for successful redirects, including User Agent and IP address.', 'nexura-redirects' ); ?></p>
 		<form method="post">
 			<?php
+			wp_nonce_field( 'bulk-logs' );
 			$logs_table->search_box( __( 'Search Logs', 'nexura-redirects' ), 'search_id' );
 			$logs_table->display();
 			?>

@@ -15,8 +15,8 @@ class Nexura_Redirects_Groups_List_Table extends WP_List_Table {
 
 	public function __construct() {
 		parent::__construct( array(
-			'singular' => __( 'Group', 'nexura-redirects' ),
-			'plural'   => __( 'Groups', 'nexura-redirects' ),
+			'singular' => 'group',
+			'plural'   => 'groups',
 			'ajax'     => false
 		) );
 	}
@@ -167,39 +167,51 @@ class Nexura_Redirects_Groups_List_Table extends WP_List_Table {
 		
 		// Query data with redirects count
 		$query = "SELECT g.id, g.name, g.module_id as module, (SELECT COUNT(id) FROM $table_redirects r WHERE r.group_id = g.id) as redirects FROM $table_groups g";
-		$args = array();
-		
+		$where_sql = '';
+		$where_args = array();
+
 		// Handle search
-		if ( ! empty( sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_REQUEST['s'] ?? '' ) ) ) ) {
-			$search = sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_REQUEST['s'] ?? '' ) );
-			$query .= " WHERE g.name LIKE %s";
-			$args[] = '%' . $wpdb->esc_like( $search ) . '%';
+		if ( ! empty( $_REQUEST['s'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$search = sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$where_sql = " WHERE g.name LIKE %s";
+			$where_args[] = '%' . $wpdb->esc_like( $search ) . '%';
 		}
 
 		// Handle sorting with strict allowlisting
 		$allowed_orderbys = array( 'id', 'name', 'module' );
-		$orderby_raw = sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_REQUEST['orderby'] ?? '' ) );
+		$orderby_raw = sanitize_text_field( wp_unslash( $_REQUEST['orderby'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$orderby = in_array( $orderby_raw, $allowed_orderbys, true ) ? $orderby_raw : 'id';
 		
-		$order_raw = strtoupper( sanitize_text_field( wp_unslash( /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */ $_REQUEST['order'] ?? '' ) ) );
+		$order_raw = strtoupper( sanitize_text_field( wp_unslash( $_REQUEST['order'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$order = ( 'DESC' === $order_raw ) ? 'DESC' : 'ASC';
-		
-		$query .= " ORDER BY {$orderby} {$order}";
 
-		if ( ! empty( $args ) ) {
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-			$prepared_query = $wpdb->prepare( $query, $args );
+		$orderby_map = array(
+			'id'     => 'g.id',
+			'name'   => 'g.name',
+			'module' => 'g.module_id',
+		);
+		$orderby_sql = isset( $orderby_map[ $orderby ] ) ? $orderby_map[ $orderby ] : 'g.id';
+
+		// Efficient count without subquery
+		$count_query = "SELECT COUNT(g.id) FROM {$table_groups} g{$where_sql}";
+		if ( ! empty( $where_args ) ) {
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$total_items = (int) $wpdb->get_var( $wpdb->prepare( $count_query, $where_args ) );
 		} else {
-			$prepared_query = $query;
+			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+			$total_items = (int) $wpdb->get_var( $count_query );
 		}
 
-		$total_items = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_var( "SELECT COUNT(id) FROM ($prepared_query) AS count_table" );
-		
 		$current_page = $this->get_pagenum();
 		$offset = ( $current_page - 1 ) * $per_page;
-		$prepared_query .= $wpdb->prepare( " LIMIT %d, %d", $offset, $per_page );
-		
-		$this->items = /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_results( $prepared_query, ARRAY_A );
+
+		$query = "SELECT g.id, g.name, g.module_id as module, (SELECT COUNT(id) FROM {$table_redirects} r WHERE r.group_id = g.id) as redirects 
+				  FROM {$table_groups} g{$where_sql} 
+				  ORDER BY {$orderby_sql} {$order} LIMIT %d OFFSET %d";
+
+		$query_args = array_merge( $where_args, array( $per_page, $offset ) );
+		/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+		$this->items = $wpdb->get_results( $wpdb->prepare( $query, $query_args ), ARRAY_A );
 		
 		$this->set_pagination_args( array(
 			'total_items' => $total_items,
@@ -209,27 +221,36 @@ class Nexura_Redirects_Groups_List_Table extends WP_List_Table {
 	}
 
 	private function process_bulk_action() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		global $wpdb;
 		$table_groups = $wpdb->prefix . 'nexura_redirect_groups';
 
 		// Single delete
-		if ( 'delete' === $this->current_action() ) {
-			if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'nexura_delete_group' ) ) {
-				die( 'Security check failed' );
+		if ( 'delete' === $this->current_action() && isset( $_GET['group_id'] ) ) {
+			$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+			if ( ! wp_verify_nonce( $nonce, 'nexura_delete_group' ) ) {
+				wp_die( esc_html__( 'Security check failed.', 'nexura-redirects' ) );
 			}
-			$group_id = isset( $_GET['group_id'] ) ? absint( $_GET['group_id'] ) : 0;
+			$group_id = absint( $_GET['group_id'] );
 			if ( $group_id && $group_id != 1 ) {
-				/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->delete( $table_groups, array( 'id' => $group_id ) );
+				$wpdb->delete( $table_groups, array( 'id' => $group_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			}
 		}
 
-		// Bulk delete
-		if ( 'bulk-delete' === $this->current_action() ) { /* phpcs:ignore WordPress.Security.NonceVerification.Recommended */
+		// Bulk delete with CSRF verification
+		if ( 'bulk-delete' === $this->current_action() && isset( $_REQUEST['group_id'] ) ) {
+			$nonce = isset( $_REQUEST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ) : '';
+			if ( ! wp_verify_nonce( $nonce, 'bulk-' . $this->_args['plural'] ) ) {
+				wp_die( esc_html__( 'Security check failed.', 'nexura-redirects' ) );
+			}
 			
-			$group_ids = isset( $_REQUEST['group_id'] ) ? array_map( 'absint', (array) $_REQUEST['group_id'] ) : array();
+			$group_ids = array_map( 'absint', (array) wp_unslash( $_REQUEST['group_id'] ) );
 			foreach ( $group_ids as $id ) {
 				if ( $id != 1 ) { // Prevent deleting default group
-					/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->delete( $table_groups, array( 'id' => $id ) );
+					$wpdb->delete( $table_groups, array( 'id' => $id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				}
 			}
 		}

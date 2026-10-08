@@ -29,15 +29,15 @@ class Nexura_Redirects_DB_Schema {
 		// 1. Redirects Table
 		$sql_redirects = "CREATE TABLE $table_redirects (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-			old_url varchar(255) NOT NULL,
-			new_url varchar(255) NOT NULL,
+			old_url text NOT NULL,
+			new_url text NOT NULL,
 			status_code int(3) NOT NULL DEFAULT '301',
 			group_id bigint(20) unsigned NOT NULL DEFAULT '1',
 			match_type varchar(50) NOT NULL DEFAULT 'url',
 			hits bigint(20) unsigned NOT NULL DEFAULT '0',
-			last_accessed datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+			last_accessed datetime DEFAULT NULL,
 			PRIMARY KEY  (id),
-			KEY old_url (old_url),
+			KEY old_url (old_url(191)),
 			KEY group_id (group_id)
 		) $charset_collate;";
 
@@ -66,14 +66,14 @@ class Nexura_Redirects_DB_Schema {
 		// 4. 404 Logs Table
 		$sql_404s = "CREATE TABLE $table_404s (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-			url varchar(255) NOT NULL,
+			url text NOT NULL,
 			hits bigint(20) unsigned NOT NULL DEFAULT '0',
 			last_seen datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
 			visitor_ip varchar(45) DEFAULT NULL,
 			user_agent varchar(255) DEFAULT NULL,
 			referrer varchar(255) DEFAULT NULL,
 			PRIMARY KEY  (id),
-			KEY url (url)
+			KEY url (url(191))
 		) $charset_collate;";
 
 		dbDelta( $sql_redirects );
@@ -82,8 +82,9 @@ class Nexura_Redirects_DB_Schema {
 		dbDelta( $sql_404s );
 
 		// Insert default group if none exists
-		if ( ! /* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->get_var( "SELECT COUNT(*) FROM $table_groups" ) ) {
-			/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */ $wpdb->insert(
+		/* phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter */
+		if ( ! $wpdb->get_var( "SELECT COUNT(*) FROM $table_groups" ) ) {
+			$wpdb->insert(
 				$table_groups,
 				array(
 					'name'      => 'Redirections',

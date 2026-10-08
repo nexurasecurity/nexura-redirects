@@ -10,6 +10,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Nexura_Redirects_Groups_Tab {
 
 	public static function render() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		// Handle Add Group
 		if ( isset( $_POST['nexura_add_group'] ) && check_admin_referer( 'nexura_add_group_action', 'nexura_add_group_nonce' ) ) {
 			$name = isset( $_POST['group_name'] ) ? sanitize_text_field( wp_unslash( $_POST['group_name'] ) ) : '';
@@ -61,6 +65,7 @@ class Nexura_Redirects_Groups_Tab {
 		
 		<form method="post">
 			<?php
+			wp_nonce_field( 'bulk-groups' );
 			$groups_table->search_box( __( 'Search Groups', 'nexura-redirects' ), 'search_id' );
 			$groups_table->display();
 			?>
