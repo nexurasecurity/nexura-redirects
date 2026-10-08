@@ -200,36 +200,36 @@ Yes. In the Options tab under **Default Query Matching**, select "Pass query par
 
 ## Changelog
 
-### 1.1.2
-- **Fix:** Prevented MySQL strict mode (`NO_ZERO_DATE`) errors during table creation on MySQL 5.7+ / 8.0+ and MariaDB.
-- **Fix:** Resolved external URL redirect stripping and safely enabled external redirection with `allowed_redirect_hosts` filter.
-- **Fix:** Implemented full CSV import parsing with header detection and auto-format detection.
-- **Fix:** Added scheduled daily WP-Cron log pruning task for redirect and 404 logs based on retention settings.
-- **Fix:** Added real visitor IP detection behind Cloudflare proxies (`HTTP_CF_CONNECTING_IP`) and IP validation.
-- **Fix:** Added dedicated Migration (Serialized Search & Replace) tab in admin interface with memory-safe chunking.
-- **Fix:** Implemented single delete and bulk delete with CSRF nonce verification in 404 list table.
-- **Fix:** Added pre-population of source URL when clicking "Add Redirect" from 404 logs.
-- **Fix:** Scoped admin asset enqueuing strictly to plugin pages and post edit screens.
-- **Fix:** Synchronized Setup Wizard option keys with plugin settings.
-- **Fix:** Resolved infinite circular redirect loop on permalink change reversals.
-- **Tweak:** Optimized database pagination queries across all list tables to remove slow subqueries.
+= 1.1.2 =
+* Fix: Prevented MySQL strict mode (NO_ZERO_DATE) errors during table creation on modern MySQL 5.7+ / 8.0+ and MariaDB.
+* Fix: Resolved external URL redirect stripping and safely enabled external redirection with allowed_redirect_hosts filter.
+* Fix: Implemented full CSV import parsing with header detection and auto-format detection.
+* Fix: Added scheduled daily WP-Cron log pruning task for redirect and 404 logs based on retention settings.
+* Fix: Added real visitor IP detection behind Cloudflare proxies (HTTP_CF_CONNECTING_IP) and IP validation.
+* Fix: Added dedicated Migration (Serialized Search & Replace) tab in admin interface with memory-safe chunking.
+* Fix: Implemented single delete and bulk delete with CSRF nonce verification in 404 list table.
+* Fix: Added pre-population of source URL when clicking "Add Redirect" from 404 logs.
+* Fix: Scoped admin asset enqueuing strictly to plugin pages and post edit screens.
+* Fix: Synchronized Setup Wizard option keys with plugin settings.
+* Fix: Resolved infinite circular redirect loop on permalink change reversals.
+* Tweak: Optimized database pagination queries across all list tables to remove slow subqueries.
 
-### 1.1.1
-- **Fix:** Fully implemented backend logic for the Site tab (Relocate, Canonical Domains, HTTPS, Aliases).
-- **Fix:** Auto Redirects now correctly respect the "Monitor URL changes" setting.
-- **Fix:** Logger engine now strictly follows privacy settings for Redirect Logs, 404 Logs, and IP Logging.
-- **Fix:** Missing form tags and button types in Import/Export tab preventing imports.
-- **Fix:** "Delete plugin data" button now correctly deletes plugin data from the database.
-- **Fix:** Uninstall routine now safely drops all orphaned groups and options data.
-- **Tweak:** Resolved all PHPCS warnings and improved SQL query safety across the codebase.
+= 1.1.1 =
+* Fix: Fully implemented backend logic for the Site tab (Relocate, Canonical Domains, HTTPS, Aliases).
+* Fix: Auto Redirects now correctly respect the "Monitor URL changes" setting.
+* Fix: Logger engine now strictly follows privacy settings for Redirect Logs, 404 Logs, and IP Logging.
+* Fix: Missing form tags and button types in Import/Export tab preventing imports.
+* Fix: "Delete plugin data" button now correctly deletes plugin data from the database.
+* Fix: Uninstall routine now safely drops all orphaned groups and options data.
+* Tweak: Resolved all PHPCS warnings and improved SQL query safety across the codebase.
 
-### 1.1.0
-- **Enhancement:** Massive SEO improvements in plugin description and tags.
-- **Feature:** Added full translation support with POT file and 10 default languages (bn_BD, de_DE, fr_FR, es_ES, it_IT, pt_BR, nl_NL, ru_RU, ja, ar).
-- **Tweak:** Refactored and improved UI text for a better user experience.
+= 1.1.0 =
+* Enhancement: Massive SEO improvements in plugin description and tags.
+* Feature: Added full translation support with POT file and 10 default languages (bn_BD, de_DE, fr_FR, es_ES, it_IT, pt_BR, nl_NL, ru_RU, ja, ar).
+* Tweak: Refactored and improved UI text for a better user experience.
 
-### 1.0.9
-- Initial public release with Core Redirects, 404 Monitor, and Serialized Search & Replace.
+= 1.0.9 =
+* Initial public release with Core Redirects, 404 Monitor, and Serialized Search & Replace.
 
 ---
 
